@@ -1,22 +1,21 @@
-# lshash/lshash.py
+# sparselsh/lsh.py
 # Copyright 2012 Kay Zhu (a.k.a He Zhu) and contributors (see CONTRIBUTORS.txt)
 #
-# This module is part of lshash and is released under
+# This module is part of sparselsh and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import os
 import json
 import numpy as np
 
-from storage import storage
+from storage import storage, serialize, deserialize
 
 try:
     from bitarray import bitarray
 except ImportError:
     bitarray = None
 
-
-class LSHash(object):
+class LSH(object):
     """ LSHash implments locality sensitive hashing using random projection for
     input vectors of dimension `input_dim`.
 
@@ -83,12 +82,14 @@ class LSHash(object):
             file_exist = os.path.isfile(self.matrices_filename)
             if file_exist and not self.overwrite:
                 try:
+                    # TODO: load sparse file
                     npzfiles = np.load(self.matrices_filename)
                 except IOError:
                     print("Cannot load specified file as a numpy array")
                     raise
                 else:
                     npzfiles = sorted(npzfiles.items(), key=lambda x: x[0])
+                    # TODO: to sparse
                     self.uniform_planes = [t[1] for t in npzfiles]
             else:
                 self.uniform_planes = [self._generate_uniform_planes()
@@ -129,6 +130,7 @@ class LSHash(object):
         """
 
         try:
+            # TODO: make this calculation support sparse
             input_point = np.array(input_point)  # for faster dot product
             projections = np.dot(planes, input_point)
         except TypeError as e:
@@ -140,6 +142,7 @@ class LSHash(object):
                   `input_dim` when initializing this LSHash instance""", e)
             raise
         else:
+            # TODO: are there sparse
             return "".join(['1' if i > 0 else '0' for i in projections])
 
     def _as_np_array(self, json_or_tuple):
@@ -151,7 +154,7 @@ class LSHash(object):
             # JSON-serialized in the case of Redis
             try:
                 # Return the point stored as list, without the extra data
-                tuples = json.loads(json_or_tuple)[0]
+                tuples = deserialize(json_or_tuple)[0]
             except TypeError:
                 print("The value stored is not JSON-serilizable")
                 raise
@@ -163,10 +166,12 @@ class LSHash(object):
 
         if isinstance(tuples[0], tuple):
             # in this case extra data exists
+            # TODO: sparse array, make sure we never get a tuple here
             return np.asarray(tuples[0])
 
         elif isinstance(tuples, (tuple, list)):
             try:
+                # TODO: make sure we never get a tuple here
                 return np.asarray(tuples)
             except ValueError as e:
                 print("The input needs to be an array-like object", e)
@@ -193,11 +198,14 @@ class LSHash(object):
         """
 
         if isinstance(input_point, np.ndarray):
+            # TODO: assert sparse & leave this sparse
             input_point = input_point.tolist()
 
         if extra_data:
+            # TODO: to list
             value = (tuple(input_point), extra_data)
         else:
+            # TODO: to list
             value = tuple(input_point)
 
         for i, table in enumerate(self.hash_tables):
@@ -263,6 +271,9 @@ class LSHash(object):
         # rank candidates by distance function
         candidates = [(ix, d_func(query_point, self._as_np_array(ix)))
                       for ix in candidates]
+
+        # TODO: stop sorting when we have top num_results, instead of truncating
+        # after we've done the entire list
         candidates.sort(key=lambda x: x[1])
 
         return candidates[:num_results] if num_results else candidates
@@ -271,31 +282,40 @@ class LSHash(object):
 
     @staticmethod
     def hamming_dist(bitarray1, bitarray2):
+        # TODO: sparse? this appears to be on the hashes which are small
         xor_result = bitarray(bitarray1) ^ bitarray(bitarray2)
         return xor_result.count()
 
     @staticmethod
     def euclidean_dist(x, y):
         """ This is a hot function, hence some optimizations are made. """
+        # TODO: the array cast should be unnecessary
         diff = np.array(x) - y
+        # TODO: to sparse
         return np.sqrt(np.dot(diff, diff))
 
     @staticmethod
     def euclidean_dist_square(x, y):
         """ This is a hot function, hence some optimizations are made. """
+        # TODO: the array cast should be unnecessary
         diff = np.array(x) - y
+        # TODO: dot to sparse dot, diff.dot(diff)
         return np.dot(diff, diff)
 
     @staticmethod
     def euclidean_dist_centred(x, y):
         """ This is a hot function, hence some optimizations are made. """
+        # TODO: sparse sparse.csr_matrix.mean
         diff = np.mean(x) - np.mean(y)
+        # TODO: sparse, diff.dot(diff)
         return np.dot(diff, diff)
 
     @staticmethod
     def l1norm_dist(x, y):
+        # TODO: x and y as sparse: abs(x-y).sum()
         return sum(abs(x - y))
 
     @staticmethod
     def cosine_dist(x, y):
+        # TODO: sparse
         return 1 - np.dot(x, y) / ((np.dot(x, x) * np.dot(y, y)) ** 0.5)

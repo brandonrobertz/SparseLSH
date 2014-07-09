@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import lshash
+import sparselsh
 
 try:
     from setuptools import setup
@@ -20,14 +20,14 @@ with open('CHANGES.rst') as f:
 required = ['numpy']
 
 setup(
-    name='lshash',
+    name='sparselsh',
     version=lshash.__version__,
-    packages=['lshash'],
-    author='Kay Zhu',
-    author_email='me@kayzhu.com',
-    maintainer='Kay Zhu',
-    maintainer_email='me@kayzhu.com',
-    description='A fast Python implementation of locality sensitive hashing with persistance support.',
+    packages=['sparselsh'],
+    author='Brandon Roberts',
+    author_email='brandon@bxroberts.org',
+    maintainer='Brandon Roberts',
+    maintainer_email='brandon@bxroberts.org',
+    description='A locality sensitive hashing library with an emphasis on large (sparse) datasets.',
     long_description=readme + '\n\n' + changes,
     license=license,
     requires=required,

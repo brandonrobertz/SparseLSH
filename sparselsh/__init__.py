@@ -4,9 +4,9 @@
 # This module is part of lshash and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-__title__ = 'lshash'
-__author__ = 'Kay Zhu (me@kayzhu.com)'
+__title__ = 'sparselsh'
+__author__ = 'Brandon Roberts (brandon@bxroberts.org)'
 __license__ = 'MIT'
-__version__ = '0.0.4dev'
+__version__ = '0.0.1a'
 
-from lshash import LSHash
+from sparselsh.lsh import LSH

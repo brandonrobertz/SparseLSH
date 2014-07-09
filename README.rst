@@ -2,12 +2,11 @@
 LSHash
 ======
 
-:Version: 0.0.4dev
+:Version: 0.0.1aplha
 
-A fast Python implementation of locality sensitive hashing with persistance
-support.
+A locality sensitive hashing library with an emphasis on large (sparse) datasets.
 
-Highlights
+Features
 ==========
 
 - Fast hash calculation for large amount of high dimensional data through the use of `numpy` arrays.
@@ -53,7 +52,7 @@ Main Interface
 
 .. code-block:: python
 
-    LSHash(hash_size, input_dim, num_of_hashtables=1, storage=None, matrices_filename=None, overwrite=False)
+    LSHash(hash_size, input_dim, num_of_hashtables=1, storage_config=None, matrices_filename=None, overwrite=False)
 
 parameters:
 

@@ -7,14 +7,14 @@
 import os
 import json
 import numpy as np
+from scipy import sparse
+# from sklearn.utils.extmaths import safe_sparse_dot
 
 from storage import storage, serialize, deserialize
 
-try:
-    from bitarray import bitarray
-except ImportError:
-    bitarray = None
-
+# TODO: We need to study the speed/memory benefits of:
+#   - tuple / list and
+#   - pickle / ujson with data/indices/indptr array with reconstruction
 class LSH(object):
     """ LSHash implments locality sensitive hashing using random projection for
     input vectors of dimension `input_dim`.
@@ -115,8 +115,8 @@ class LSH(object):
         """ Generate uniformly distributed hyperplanes and return it as a 2D
         numpy array.
         """
-
-        return np.random.randn(self.hash_size, self.input_dim)
+        dense_planes = np.random.randn(self.hash_size, self.input_dim)
+        return sparse.csr_matrix(dense_planes)
 
     def _hash(self, planes, input_point):
         """ Generates the binary hash for `input_point` and returns it.
@@ -125,14 +125,23 @@ class LSH(object):
             The planes are random uniform planes with a dimension of
             `hash_size` * `input_dim`.
         :param input_point:
-            A Python tuple or list object that contains only numbers.
+            A scipy sparse matrix that contains only numbers.
             The dimension needs to be 1 * `input_dim`.
         """
-
         try:
-            # TODO: make this calculation support sparse
-            input_point = np.array(input_point)  # for faster dot product
-            projections = np.dot(planes, input_point)
+
+            # # TODO: make this calculation support sparse
+            # print "input_point", np.array(input_point).shape
+            # print "planes", np.array(planes).shape
+            # input_point = np.array(input_point)  # for faster dot product
+            # projections = np.dot(np.array(planes), input_point)
+
+            input_point = input_point.transpose()
+            # print "input_point", input_point.shape, input_point.dtype
+            # print "planes", planes.shape, planes.dtype
+            projections = planes.dot(input_point)
+            # print "Projections", projections.shape
+
         except TypeError as e:
             print("""The input point needs to be an array-like object with
                   numbers only elements""")
@@ -142,7 +151,7 @@ class LSH(object):
                   `input_dim` when initializing this LSHash instance""", e)
             raise
         else:
-            # TODO: are there sparse
+            # TODO: are there sparse versions of this?
             return "".join(['1' if i > 0 else '0' for i in projections])
 
     def _as_np_array(self, json_or_tuple):
@@ -150,6 +159,9 @@ class LSH(object):
         the original input points stored, and returns the original input point
         in numpy array format.
         """
+        # NOTE: we're doing all deserialization in the storage backend now
+        # so this just needs to assume that
+
         if isinstance(json_or_tuple, basestring):
             # JSON-serialized in the case of Redis
             try:
@@ -167,7 +179,10 @@ class LSH(object):
         if isinstance(tuples[0], tuple):
             # in this case extra data exists
             # TODO: sparse array, make sure we never get a tuple here
-            return np.asarray(tuples[0])
+            # return np.asarray(tuples[0])
+
+            # New sparse
+            return tuples[0]
 
         elif isinstance(tuples, (tuple, list)):
             try:
@@ -197,20 +212,22 @@ class LSH(object):
             basic types such as strings and integers.
         """
 
-        if isinstance(input_point, np.ndarray):
-            # TODO: assert sparse & leave this sparse
-            input_point = input_point.tolist()
+        assert sparse.issparse(input_point), "input_point needs to be sparse"
+
+        # Commented out because we're assuming sparse here
+        # if isinstance(input_point, np.ndarray):
+        #     # TODO: assert sparse & leave this sparse
+        #     input_point = input_point.tolist()
 
         if extra_data:
-            # TODO: to list
-            value = (tuple(input_point), extra_data)
+            value = [input_point, extra_data]
         else:
-            # TODO: to list
-            value = tuple(input_point)
+            value = input_point
 
         for i, table in enumerate(self.hash_tables):
-            table.append_val(self._hash(self.uniform_planes[i], input_point),
-                             value)
+            table.append_val(
+                self._hash(self.uniform_planes[i], input_point),
+                value)
 
     def query(self, query_point, num_results=None, distance_func=None):
         """ Takes `query_point` which is either a tuple or a list of numbers,
@@ -218,7 +235,7 @@ class LSH(object):
         based on the supplied metric function `distance_func`.
 
         :param query_point:
-            A list, or tuple, or numpy ndarray that only contains numbers.
+            A sparse array that only contains numbers.
             The dimension needs to be 1 * `input_dim`.
             Used by :meth:`._hash`.
         :param num_results:
@@ -231,14 +248,11 @@ class LSH(object):
             "centred_euclidean", "cosine", "l1norm"). By default "euclidean"
             will used.
         """
+        assert sparse.issparse(query_point), "query_point needs to be sparse"
 
         candidates = set()
         if not distance_func:
             distance_func = "euclidean"
-
-        if distance_func == "hamming":
-            if not bitarray:
-                raise ImportError(" Bitarray is required for hamming distance")
 
             for i, table in enumerate(self.hash_tables):
                 binary_hash = self._hash(self.uniform_planes[i], query_point)
@@ -281,41 +295,46 @@ class LSH(object):
     ### distance functions
 
     @staticmethod
-    def hamming_dist(bitarray1, bitarray2):
-        # TODO: sparse? this appears to be on the hashes which are small
-        xor_result = bitarray(bitarray1) ^ bitarray(bitarray2)
-        return xor_result.count()
+    # def hamming_dist(bitarray1, bitarray2):
+    #     # TODO: sparse? this appears to be on the hashes which are small
+    #     xor_result = bitarray(bitarray1) ^ bitarray(bitarray2)
+    #     return xor_result.count()
+    def hamming_dist(sparse1, sparse2):
+        return (sparse1 != sparse2).sum()
 
     @staticmethod
     def euclidean_dist(x, y):
-        """ This is a hot function, hence some optimizations are made. """
-        # TODO: the array cast should be unnecessary
-        diff = np.array(x) - y
-        # TODO: to sparse
-        return np.sqrt(np.dot(diff, diff))
+        # """ This is a hot function, hence some optimizations are made. """
+        # # TODO: the array cast should be unnecessary
+        # diff = np.array(x) - y
+        # # TODO: to sparse
+        # return np.sqrt(np.dot(diff, diff))
+        diff = x - y
+        return sparse.csr_matrix.sqrt( diff.dot(diff))
 
     @staticmethod
     def euclidean_dist_square(x, y):
-        """ This is a hot function, hence some optimizations are made. """
-        # TODO: the array cast should be unnecessary
-        diff = np.array(x) - y
-        # TODO: dot to sparse dot, diff.dot(diff)
-        return np.dot(diff, diff)
+        diff = x - y
+        return diff.dot(diff)
 
     @staticmethod
     def euclidean_dist_centred(x, y):
-        """ This is a hot function, hence some optimizations are made. """
-        # TODO: sparse sparse.csr_matrix.mean
-        diff = np.mean(x) - np.mean(y)
-        # TODO: sparse, diff.dot(diff)
-        return np.dot(diff, diff)
+        # """ This is a hot function, hence some optimizations are made. """
+        # # TODO: sparse sparse.csr_matrix.mean
+        # diff = np.mean(x) - np.mean(y)
+        # # TODO: sparse, diff.dot(diff)
+        # return np.dot(diff, diff)
+        diff = x.mean() - y.mean()
+        return diff.dot( diff)
 
     @staticmethod
     def l1norm_dist(x, y):
-        # TODO: x and y as sparse: abs(x-y).sum()
-        return sum(abs(x - y))
+        return abs(x - y).sum()
 
+    # @staticmethod
+    # def cosine_dist(x, y):
+    #     # TODO: sparse
+    #     return 1 - np.dot(x, y) / ((np.dot(x, x) * np.dot(y, y)) ** 0.5)
     @staticmethod
     def cosine_dist(x, y):
-        # TODO: sparse
-        return 1 - np.dot(x, y) / ((np.dot(x, x) * np.dot(y, y)) ** 0.5)
+        return 1 - x.dot(y) / ((x.dot(x) * y.dot(y)) ** 0.5)

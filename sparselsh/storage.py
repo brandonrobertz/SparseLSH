@@ -25,7 +25,7 @@ except ImportError:
 try:
     import cPickle as pickle
 except ImportError:
-    print "Couldn't import cPickle, using slower pickle"
+    print "Couldn't import cPickle, using slower built-in pickle"
     import pickle
 
 # TODO: save/reconstruct data,indices,indptr arrays w/ ujson
@@ -129,7 +129,7 @@ class RedisStorage(BaseStorage):
         return self.storage.get(key)
 
     def append_val(self, key, val):
-        self.storage.rpush(key, json.dumps(val))
+        self.storage.rpush(key, pickle.dumps(val))
 
     def get_list(self, key):
         return self.storage.lrange(key, 0, -1)

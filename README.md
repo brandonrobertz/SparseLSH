@@ -1,5 +1,5 @@
-LSHash
-======
+SparseLSH
+=========
 
 A locality sensitive hashing library with an emphasis on large, highly-dimensional datasets.
 

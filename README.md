@@ -34,7 +34,7 @@ Optionally (for in-memory and disk-based persistence):
 
 - [redis](https://pypi.python.org/pypi/redis/)
 - [leveldb](https://code.google.com/p/py-leveldb/)
-- [bsddb](https://pypi.python.org/pypi/bsddb3/6.0.1] (built-in on Python 2.7.x)
+- [bsddb](https://pypi.python.org/pypi/bsddb3/6.0.1) (built-in on Python 2.7.x)
 
 To install (minimal install):
 

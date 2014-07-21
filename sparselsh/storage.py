@@ -28,7 +28,6 @@ except ImportError:
     print "Couldn't import cPickle, using slower built-in pickle"
     import pickle
 
-# TODO: save/reconstruct data,indices,indptr arrays w/ ujson
 def serialize( data):
     return cPickle.dumps( data)
 def deserialize( data):
@@ -129,10 +128,12 @@ class RedisStorage(BaseStorage):
         return self.storage.get(key)
 
     def append_val(self, key, val):
-        self.storage.rpush(key, pickle.dumps(val))
+        self.storage.rpush(key, serialize(val))
 
     def get_list(self, key):
-        return self.storage.lrange(key, 0, -1)
+        # TODO: find a better way to do this
+        values = self.storage.lrange(key, 0, -1)
+        return [ deserialize(v)for v in values]
 
 class BerkeleyDBStorage(BaseStorage):
     def __init__(self, config):
@@ -154,10 +155,6 @@ class BerkeleyDBStorage(BaseStorage):
         return self.storage[key]
 
     def append_val(self, key, val):
-        # TODO: Remove once we move to sparse lists
-        if type(val) == tuple:
-            val = list(val)
-
         try:
             current = self.deserialize( self.storage[key])
         except KeyError:
@@ -191,10 +188,6 @@ class LevelDBStorage(BaseStorage):
         return self.serialize( self.storage.Get( key))
 
     def append_val(self, key, val):
-        # TODO: remove once we're all sparse lists
-        if type(val) == tuple:
-            val = list(val)
-
         # If a key doesn't exist, leveldb will throw KeyError
         try:
             current = self.deserialize(self.storage.Get(key))

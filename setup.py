@@ -8,20 +8,20 @@ except ImportError:
     from distutils.core import setup
 
 
-with open('README.rst') as f:
+with open('README.md') as f:
     readme = f.read()
 
 with open('LICENSE') as f:
     license = f.read()
 
-with open('CHANGES.rst') as f:
+with open('CHANGES.md') as f:
     changes = f.read()
 
-required = ['numpy']
+required = ['numpy', 'scipy']
 
 setup(
     name='sparselsh',
-    version=lshash.__version__,
+    version=sparselsh.__version__,
     packages=['sparselsh'],
     author='Brandon Roberts',
     author_email='brandon@bxroberts.org',

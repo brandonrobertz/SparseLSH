@@ -1,22 +1,14 @@
 # sparselsh/lsh.py
-# Copyright 2012 Kay Zhu (a.k.a He Zhu) and contributors (see CONTRIBUTORS.txt)
-#
-# This module is part of sparselsh and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import os
 import json
 import numpy as np
 from scipy import sparse
-# from sklearn.utils.extmaths import safe_sparse_dot
 
 from storage import storage, serialize, deserialize
 
-# TODO: We need to study the speed/memory benefits of:
-#   - tuple / list and
-#   - pickle / ujson with data/indices/indptr array with reconstruction
 class LSH(object):
-    """ LSHash implments locality sensitive hashing using random projection for
+    """ LSH implments locality sensitive hashing using random projection for
     input vectors of dimension `input_dim`.
 
     Attributes:
@@ -25,22 +17,40 @@ class LSH(object):
         The length of the resulting binary hash in integer. E.g., 32 means the
         resulting binary hash will be 32-bit long.
     :param input_dim:
-        The dimension of the input vector. E.g., a grey-scale picture of 30x30
-        pixels will have an input dimension of 900.
+        The dimension of the input vector. This can be found in your sparse
+        matrix by checking the .shape attribute of your matrix. I.E.,
+            `csr_dataset.shape[1]`
     :param num_hashtables:
-        (optional) The number of hash tables used for multiple lookups.
+        (optional) The number of hash tables used for multiple look-ups.
+        Increasing the number of hashtables increases the probability of
+        a hash collision of similar documents, but it also increases the
+        amount of work needed to add points.
     :param storage_config:
         (optional) A dictionary of the form `{backend_name: config}` where
-        `backend_name` is the either `dict` or `redis`, and `config` is the
-        configuration used by the backend. For `redis` it should be in the
-        format of `{"redis": {"host": hostname, "port": port_num}}`, where
-        `hostname` is normally `localhost` and `port` is normally 6379.
+        `backend_name` is the either `dict`, `berkeleydb`, `leveldb` or
+        `redis`. `config` is the configuration used by the backend.
+        Example configs for each type are as follows:
+        `In-Memory Python Dictionary`:
+            {"dict": None} # Takes no options
+        `Redis`:
+            `{"redis": {"host": hostname, "port": port_num}}`
+            Where `hostname` is normally `localhost` and `port` is normally 6379.
+        `LevelDB`:
+            {'leveldb':{'db': 'ldb'}}
+            Where 'db' specifies the directory to store the LevelDB database.
+        `Berkeley DB`:
+            {'berkeleydb':{'filename': './db'}}
+            Where 'filename' is the location of the database file.
+        NOTE: Both Redis and Dict are in-memory. Keep this in mind when
+        selecting a storage backend.
     :param matrices_filename:
         (optional) Specify the path to the compressed numpy file ending with
         extension `.npz`, where the uniform random planes are stored, or to be
         stored if the file does not exist yet.
     :param overwrite:
-        (optional) Whether to overwrite the matrices file if it already exist
+        (optional) Whether to overwrite the matrices file if it already exist.
+        This needs to be True if the input dimensions or number of hashtables
+        change.
     """
 
     def __init__(self, hash_size, input_dim, num_hashtables=1,
@@ -129,18 +139,8 @@ class LSH(object):
             The dimension needs to be 1 * `input_dim`.
         """
         try:
-
-            # # TODO: make this calculation support sparse
-            # print "input_point", np.array(input_point).shape
-            # print "planes", np.array(planes).shape
-            # input_point = np.array(input_point)  # for faster dot product
-            # projections = np.dot(np.array(planes), input_point)
-
             input_point = input_point.transpose()
-            # print "input_point", input_point.shape, input_point.dtype
-            # print "planes", planes.shape, planes.dtype
             projections = planes.dot(input_point)
-            # print "Projections", projections.shape
 
         except TypeError as e:
             print("""The input point needs to be an array-like object with
@@ -148,79 +148,75 @@ class LSH(object):
             raise
         except ValueError as e:
             print("""The input point needs to be of the same dimension as
-                  `input_dim` when initializing this LSHash instance""", e)
+                  `input_dim` when initializing this LSH instance""", e)
             raise
         else:
-            # TODO: are there sparse versions of this?
             return "".join(['1' if i > 0 else '0' for i in projections])
 
-    def _as_np_array(self, json_or_tuple):
-        """ Takes either a JSON-serialized data structure or a tuple that has
-        the original input points stored, and returns the original input point
-        in numpy array format.
+    def _as_np_array(self, serial_or_sparse):
+        """ Takes either a serialized data structure, a sparse matrix, or tuple
+        that has the original input points stored, and returns the original
+        input point (a 1 x N sparse matrix).
         """
-        # NOTE: we're doing all deserialization in the storage backend now
-        # so this just needs to assume that
+        # if we get a plain sparse matrix, return it (it's the point itself)
+        if sparse.issparse(serial_or_sparse):
+            return serial_or_sparse
 
-        if isinstance(json_or_tuple, basestring):
-            # JSON-serialized in the case of Redis
+        # here we have a serialized pickle object
+        if isinstance(serial_or_sparse, basestring):
             try:
-                # Return the point stored as list, without the extra data
-                tuples = deserialize(json_or_tuple)[0]
+                deserial = deserialize(serial_or_sparse)
             except TypeError:
-                print("The value stored is not JSON-serilizable")
+                print("The value stored is not deserializable")
                 raise
         else:
             # If extra_data exists, `tuples` is the entire
-            # (point:tuple, extra_data). Otherwise (i.e., extra_data=None),
+            # (point:sparse, extra_daa). Otherwise (i.e., extra_data=None),
             # return the point stored as a tuple
-            tuples = json_or_tuple
+            deserial = serial_or_sparse
 
-        if isinstance(tuples[0], tuple):
-            # in this case extra data exists
-            # TODO: sparse array, make sure we never get a tuple here
-            # return np.asarray(tuples[0])
+        # if we deserialized it, we might have the sparse now
+        if sparse.issparse(deserial):
+            return deserial
 
-            # New sparse
+        if isinstance(deserial[0], tuple):
+            # extra data was supplied, return point
             return tuples[0]
 
-        elif isinstance(tuples, (tuple, list)):
+        elif isinstance(deserial, (tuple, list)):
             try:
-                # TODO: make sure we never get a tuple here
-                return np.asarray(tuples)
+                return deserial[0]
             except ValueError as e:
                 print("The input needs to be an array-like object", e)
                 raise
         else:
-            raise TypeError("query data is not supported")
+            raise TypeError("the input data is not supported")
 
     def index(self, input_point, extra_data=None):
         """ Index a single input point by adding it to the selected storage.
 
         If `extra_data` is provided, it will become the value of the dictionary
         {input_point: extra_data}, which in turn will become the value of the
-        hash table. `extra_data` needs to be JSON serializable if in-memory
-        dict is not used as storage.
+        hash table.
 
         :param input_point:
-            A list, or tuple, or numpy ndarray object that contains numbers
-            only. The dimension needs to be 1 * `input_dim`.
-            This object will be converted to Python tuple and stored in the
-            selected storage.
+            A sparse CSR matrix. The dimension needs to be 1 * `input_dim`.
         :param extra_data:
-            (optional) Needs to be a JSON-serializable object: list, dicts and
-            basic types such as strings and integers.
+            (optional) A value to associate with the point. Commonly this is
+            a target/class-value of some type.
         """
 
         assert sparse.issparse(input_point), "input_point needs to be sparse"
 
-        # Commented out because we're assuming sparse here
-        # if isinstance(input_point, np.ndarray):
-        #     # TODO: assert sparse & leave this sparse
-        #     input_point = input_point.tolist()
+        # print "Input Point:", input_point.shape[0], \
+        #     "x", input_point.shape[1], "Matrix"
+        # print "Extra:", extra_data
 
-        if extra_data:
-            value = [input_point, extra_data]
+        # NOTE: there was a bug with 0-equal extra_data
+        # we need to allow blank extra_data if it's provided
+        if not isinstance(extra_data, type(None)):
+            # NOTE: needs to be tuple so it's set-hashable
+            value = (input_point, extra_data)
         else:
             value = input_point
 
@@ -229,19 +225,28 @@ class LSH(object):
                 self._hash(self.uniform_planes[i], input_point),
                 value)
 
+    def _string_bits_to_array( self, hash_key):
+        """ Take our hash keys (strings of 0 and 1) and turn it
+        into a numpy matrix we can do calculations with.
+
+        :param hash_key
+        """
+        return np.array( [ float(i) for i in hash_key])
+
     def query(self, query_point, num_results=None, distance_func=None):
-        """ Takes `query_point` which is either a tuple or a list of numbers,
+        """ Takes `query_point` which is a sparse CSR matrix of 1 x `input_dim`,
         returns `num_results` of results as a list of tuples that are ranked
         based on the supplied metric function `distance_func`.
 
         :param query_point:
-            A sparse array that only contains numbers.
-            The dimension needs to be 1 * `input_dim`.
+            A sparse CSR matrix. The dimension needs to be 1 * `input_dim`.
             Used by :meth:`._hash`.
         :param num_results:
             (optional) Integer, specifies the max amount of results to be
             returned. If not specified all candidates will be returned as a
             list in ranked order.
+            NOTE: You do not save processing by limiting the results. Currently,
+            a similarity ranking and sort is done on all items in the hashtable.
         :param distance_func:
             (optional) The distance function to be used. Currently it needs to
             be one of ("hamming", "euclidean", "true_euclidean",
@@ -250,47 +255,61 @@ class LSH(object):
         """
         assert sparse.issparse(query_point), "query_point needs to be sparse"
 
+        # print "Query Point", query_point.shape[0], "x", query_point.shape[1]
+
         candidates = set()
         if not distance_func:
             distance_func = "euclidean"
 
             for i, table in enumerate(self.hash_tables):
+                # get hash of query point
                 binary_hash = self._hash(self.uniform_planes[i], query_point)
                 for key in table.keys():
-                    distance = LSHash.hamming_dist(key, binary_hash)
+                    # calculate distance from query point hash to all hashes
+                    distance = LSH.hamming_dist(
+                        self._string_bits_to_array(key),
+                        self._string_bits_to_array(binary_hash))
+                    # NOTE: we could make this threshold user defined
                     if distance < 2:
-                        candidates.update(table.get_list(key))
+                        members = table.get_list(key)
+                        candidates.update(members)
 
-            d_func = LSHash.euclidean_dist_square
+            d_func = LSH.euclidean_dist_square
 
         else:
 
             if distance_func == "euclidean":
-                d_func = LSHash.euclidean_dist_square
+                d_func = LSH.euclidean_dist_square
             elif distance_func == "true_euclidean":
-                d_func = LSHash.euclidean_dist
+                d_func = LSH.euclidean_dist
             elif distance_func == "centred_euclidean":
-                d_func = LSHash.euclidean_dist_centred
+                d_func = LSH.euclidean_dist_centred
             elif distance_func == "cosine":
-                d_func = LSHash.cosine_dist
+                d_func = LSH.cosine_dist
             elif distance_func == "l1norm":
-                d_func = LSHash.l1norm_dist
+                d_func = LSH.l1norm_dist
             else:
                 raise ValueError("The distance function name is invalid.")
 
+            # TODO: pull out into fn w/ optional threshold arg
             for i, table in enumerate(self.hash_tables):
                 binary_hash = self._hash(self.uniform_planes[i], query_point)
-                candidates.update(table.get_list(binary_hash))
+                candidates.update(table.get_list(binary_hash)[0])
 
-        # rank candidates by distance function
-        candidates = [(ix, d_func(query_point, self._as_np_array(ix)))
-                      for ix in candidates]
+         # # rank candidates by distance function
+        # TODO: use sorted sets
+        ranked_candidates = []
+        for ix in candidates:
+            point = self._as_np_array(ix)
+            dist = d_func(query_point, point)
+            ranked_candidates.append( (ix,dist))
 
         # TODO: stop sorting when we have top num_results, instead of truncating
         # after we've done the entire list
-        candidates.sort(key=lambda x: x[1])
+        # import pdb; pdb.set_trace()
+        ranked_candidates.sort(key=lambda x: x[1])
 
-        return candidates[:num_results] if num_results else candidates
+        return ranked_candidates[:num_results] if num_results else ranked_candidates
 
     ### distance functions
 
@@ -315,7 +334,8 @@ class LSH(object):
     @staticmethod
     def euclidean_dist_square(x, y):
         diff = x - y
-        return diff.dot(diff)
+        result = diff.dot(diff.transpose())
+        return result.data[0]
 
     @staticmethod
     def euclidean_dist_centred(x, y):

@@ -133,7 +133,7 @@ Parameters:
 
 ### Index (Add points to hash table):
 
-- To index a data point of a given `LSH` instance::
+- To index a data point of a given `LSH` instance:
 
     lsh.index(input_point, extra_data=None)
 
@@ -146,11 +146,13 @@ Parameters:
         (optional) Extra data to be added along with the input_point.
         This can be used to hold values like class labels, URIs, titles, etc.
 
+This function returns nothing.
+
 ### Query (Search for similar points)
 
 To query a data point against a given `LSH` instance:
 
-    lsh.query(query_point, num_results=None, distance_func="euclidean"):
+    lsh.query(query_point, num_results=None, distance_func="euclidean")
 
 Parameters:
 
@@ -168,3 +170,7 @@ Parameters:
     distance_func = "euclidean":
         (optional) Distance function to use to rank the candidates. By default
         euclidean distance function will be used.
+
+Returns a list of tuples, each of which has the original input point (which
+will be a tuple of csr-matrix, extra_data or just the csr-matrix if no extra
+data was supplied) and a similarity score.

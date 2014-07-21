@@ -208,10 +208,6 @@ class LSH(object):
 
         assert sparse.issparse(input_point), "input_point needs to be sparse"
 
-        # print "Input Point:", input_point.shape[0], \
-        #     "x", input_point.shape[1], "Matrix"
-        # print "Extra:", extra_data
-
         # NOTE: there was a bug with 0-equal extra_data
         # we need to allow blank extra_data if it's provided
         if not isinstance(extra_data, type(None)):
@@ -255,8 +251,6 @@ class LSH(object):
         """
         assert sparse.issparse(query_point), "query_point needs to be sparse"
 
-        # print "Query Point", query_point.shape[0], "x", query_point.shape[1]
-
         candidates = set()
         if not distance_func:
             distance_func = "euclidean"
@@ -297,7 +291,6 @@ class LSH(object):
                 candidates.update(table.get_list(binary_hash)[0])
 
          # # rank candidates by distance function
-        # TODO: use sorted sets
         ranked_candidates = []
         for ix in candidates:
             point = self._as_np_array(ix)
@@ -306,7 +299,6 @@ class LSH(object):
 
         # TODO: stop sorting when we have top num_results, instead of truncating
         # after we've done the entire list
-        # import pdb; pdb.set_trace()
         ranked_candidates.sort(key=lambda x: x[1])
 
         return ranked_candidates[:num_results] if num_results else ranked_candidates
@@ -314,20 +306,11 @@ class LSH(object):
     ### distance functions
 
     @staticmethod
-    # def hamming_dist(bitarray1, bitarray2):
-    #     # TODO: sparse? this appears to be on the hashes which are small
-    #     xor_result = bitarray(bitarray1) ^ bitarray(bitarray2)
-    #     return xor_result.count()
     def hamming_dist(sparse1, sparse2):
         return (sparse1 != sparse2).sum()
 
     @staticmethod
     def euclidean_dist(x, y):
-        # """ This is a hot function, hence some optimizations are made. """
-        # # TODO: the array cast should be unnecessary
-        # diff = np.array(x) - y
-        # # TODO: to sparse
-        # return np.sqrt(np.dot(diff, diff))
         diff = x - y
         return sparse.csr_matrix.sqrt( diff.dot(diff))
 
@@ -339,11 +322,6 @@ class LSH(object):
 
     @staticmethod
     def euclidean_dist_centred(x, y):
-        # """ This is a hot function, hence some optimizations are made. """
-        # # TODO: sparse sparse.csr_matrix.mean
-        # diff = np.mean(x) - np.mean(y)
-        # # TODO: sparse, diff.dot(diff)
-        # return np.dot(diff, diff)
         diff = x.mean() - y.mean()
         return diff.dot( diff)
 
@@ -351,10 +329,6 @@ class LSH(object):
     def l1norm_dist(x, y):
         return abs(x - y).sum()
 
-    # @staticmethod
-    # def cosine_dist(x, y):
-    #     # TODO: sparse
-    #     return 1 - np.dot(x, y) / ((np.dot(x, x) * np.dot(y, y)) ** 0.5)
     @staticmethod
     def cosine_dist(x, y):
         return 1 - x.dot(y) / ((x.dot(x) * y.dot(y)) ** 0.5)

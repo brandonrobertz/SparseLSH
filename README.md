@@ -51,6 +51,7 @@ Quickstart
 To create 4-bit hashes for input data of 7 dimensions:
 
     from sparselsh import LSH
+    from scipy.sparse import csr_matrix
 
     X = csr_matrix( [
         [ 3, 0, 0, 0, 0, 0, -1],
@@ -72,7 +73,8 @@ To create 4-bit hashes for input data of 7 dimensions:
         c = y[ix]
         lsh.index( x, extra_data=c)
 
-    lsh.query(x, num_results=1)
+    # find the point in X nearest to X_sim
+    lsh.query(X_sim, num_results=1)
 
 The query will result in a list of matrix-class tuple & similarity
 score tuples. A lower score is better in this case:

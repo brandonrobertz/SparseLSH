@@ -25,7 +25,7 @@ pickle if it's not available.
 
 Installation
 ============
-`SparseHash` depends on the following libraries:
+`SparseLSH` depends on the following libraries:
 
 - [numpy](http://www.numpy.org/)
 - [scipy](http://www.scipy.org/)

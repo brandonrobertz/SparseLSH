@@ -290,7 +290,8 @@ class LSH(object):
                 binary_hash = self._hash(self.uniform_planes[i], query_point)
                 candidates.update(table.get_list(binary_hash)[0])
 
-         # # rank candidates by distance function
+        print "Candidates", candidates
+        # # rank candidates by distance function
         ranked_candidates = []
         for ix in candidates:
             point = self._as_np_array(ix)
@@ -298,6 +299,7 @@ class LSH(object):
             ranked_candidates.append( (ix,dist))
 
         # TODO: stop sorting when we have top num_results, instead of truncating
+        # TODO: (do this by replacing set with ordered set)
         # after we've done the entire list
         ranked_candidates.sort(key=lambda x: x[1])
 

@@ -4,7 +4,7 @@ SparseLSH
 A locality sensitive hashing library with an emphasis on large, highly-dimensional datasets.
 
 Features
-==========
+--------
 
 - Fast and memory-efficient calculations using sparse matrices.
 - Built-in support for key-value storage backends: pure-python, Redis (memory-bound), LevelDB, BerkeleyDB
@@ -12,7 +12,7 @@ Features
 - Built-in support for common distance/objective functions for ranking outputs.
 
 Details
-=======
+-------
 
 SparseLSH is based on a fork of Kay Zhu's lshash, and is suited for datasets that won't
 fit into main memory or are highly dimensional. Using sparse matrices
@@ -24,7 +24,7 @@ Serialization is done using cPickle (for raw C speedups), falling back to python
 pickle if it's not available.
 
 Installation
-============
+------------
 `SparseLSH` depends on the following libraries:
 
 - [numpy](http://www.numpy.org/)
@@ -47,7 +47,7 @@ from the `optional-requirements.txt`:
     pip install -r optional-requirements.txt
 
 Quickstart
-==========
+----------
 To create 4-bit hashes for input data of 7 dimensions:
 
     from sparselsh import LSH
@@ -74,7 +74,7 @@ To create 4-bit hashes for input data of 7 dimensions:
         lsh.index( x, extra_data=c)
 
     # find the point in X nearest to X_sim
-    lsh.query(X_sim, num_results=1)
+    points = lsh.query(X_sim, num_results=1)
 
 The query will result in a list of matrix-class tuple & similarity
 score tuples. A lower score is better in this case:
@@ -82,8 +82,14 @@ score tuples. A lower score is better in this case:
     [((<1x7 sparse matrix of type '<type 'numpy.int64'>'
         with 7 stored elements in Compressed Sparse Row format>, 10), 1)]
 
+We can look at the most similar matched item by accessing the sparse array
+and invoking it's `todense` function:
+
+    In [11]: print points[0][0][0].todense()
+    [[1 1 1 1 1 1 1]]
+
 Main Interface
-==============
+--------------
 
 Most of the parameters are supplied at class init time:
 
@@ -119,7 +125,8 @@ Parameters:
                 {"redis": {"host": "127.0.0.1", "port": 6379, "db": 0}
             LevelDB:
                 {"leveldb":{"db": "ldb"}}
-                Where "db" specifies the directory to store the LevelDB database.
+                Where "ldb" specifies the directory to store the LevelDB database.
+                (In this case it will be `./ldb/`)
             Berkeley DB:
                 {"berkeleydb":{"filename": "./db"}}
                 Where "filename" is the location of the database file.

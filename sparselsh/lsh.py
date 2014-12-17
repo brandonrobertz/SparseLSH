@@ -319,6 +319,8 @@ class LSH(object):
     @staticmethod
     def euclidean_dist_square(x, y):
         diff = x - y
+        if diff.nnz == 0:
+            return 0.0
         result = diff.dot(diff.transpose())
         return result.data[0]
 

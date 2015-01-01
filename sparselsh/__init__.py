@@ -4,6 +4,6 @@
 __title__ = 'sparselsh'
 __author__ = 'Brandon Roberts (brandon@bxroberts.org)'
 __license__ = 'MIT'
-__version__ = '0.0.1a'
+__version__ = '0.0.2'
 
 from sparselsh.lsh import LSH

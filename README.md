@@ -23,6 +23,8 @@ appropriate, you can use one of the disk-based key-value stores, LevelDB and Ber
 Serialization is done using cPickle (for raw C speedups), falling back to python
 pickle if it's not available.
 
+BTC Donations: `1NejrUgQDm34CFyMHuaff9PNsd8zhd7SgR`
+
 Installation
 ------------
 `SparseLSH` depends on the following libraries:
@@ -183,3 +185,4 @@ Parameters:
 Returns a list of tuples, each of which has the original input point (which
 will be a tuple of csr-matrix, extra_data or just the csr-matrix if no extra
 data was supplied) and a similarity score.
+

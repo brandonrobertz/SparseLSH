@@ -290,7 +290,6 @@ class LSH(object):
                 binary_hash = self._hash(self.uniform_planes[i], query_point)
                 candidates.update(table.get_list(binary_hash)[0])
 
-        print "Candidates", candidates
         # # rank candidates by distance function
         ranked_candidates = []
         for ix in candidates:

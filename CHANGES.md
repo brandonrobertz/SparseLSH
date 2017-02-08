@@ -1,2 +1,0 @@
-- 2014/07/08 -- Initial fork from LSHash
-- 2014/07/20 -- All input points are done using sparse matrix math when proper

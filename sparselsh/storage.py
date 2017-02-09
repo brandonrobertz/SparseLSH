@@ -1,11 +1,8 @@
-# lshash/storage.py
-# Copyright 2012 Kay Zhu (a.k.a He Zhu) and contributors (see CONTRIBUTORS.txt)
-#
-# This module is part of lshash and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+from __future__ import print_function
 
 import time
-import cPickle
+import pickle
+import sys
 
 try:
     import redis
@@ -25,13 +22,12 @@ except ImportError:
 try:
     import cPickle as pickle
 except ImportError:
-    print "Couldn't import cPickle, using slower built-in pickle"
     import pickle
 
 def serialize( data):
-    return cPickle.dumps( data)
+    return pickle.dumps( data, protocol=2)
 def deserialize( data):
-    return cPickle.loads( data)
+    return pickle.loads( data)
 
 __all__ = ['storage']
 
@@ -97,7 +93,7 @@ class InMemoryStorage(BaseStorage):
         self.storage = dict()
 
     def keys(self):
-        return self.storage.keys()
+        return list(self.storage.keys())
 
     def set_val(self, key, val):
         self.storage[key] = val
@@ -138,15 +134,14 @@ class RedisStorage(BaseStorage):
 class BerkeleyDBStorage(BaseStorage):
     def __init__(self, config):
         if 'filename' not in config:
-            raise ValueError, "You must supply a 'filename' in your config"
+            raise ValueError("You must supply a 'filename' in your config")
         self.storage = bsddb.hashopen( config['filename'])
 
     def __exit__(self, type, value, traceback):
-        print "Cleaning up"
         self.storage.sync()
 
     def keys(self):
-        return self.storage.keys()
+        return list(self.storage.keys())
 
     def set_val(self, key, val):
         self.storage[key] = self.serialize(val)
@@ -175,7 +170,7 @@ class LevelDBStorage(BaseStorage):
         if not leveldb:
             raise ImportError("leveldb is required to use Redis as storage.")
         if 'db' not in config:
-            raise ValueError, "You must specify LevelDB filename as 'db' in your config"
+            raise ValueError("You must specify LevelDB filename as 'db' in your config")
         self.storage = leveldb.LevelDB( config['db'])
 
     def keys(self):
@@ -189,10 +184,17 @@ class LevelDBStorage(BaseStorage):
 
     def append_val(self, key, val):
         # If a key doesn't exist, leveldb will throw KeyError
+        current = []
         try:
-            current = self.deserialize(self.storage.Get(key))
+            item = self.storage.Get(key)
+            current = self.deserialize()
         except KeyError:
-            current = []
+            pass
+        except TypeError:
+            # here, we have python3, which has a different manner for
+            # interacting with leveldb
+            if type(key) == str and sys.version_info[0] == 3:
+                return self.append_val( bytes( key, 'UTF-8'), val)
 
         # update new list
         current.append( val)
@@ -200,6 +202,7 @@ class LevelDBStorage(BaseStorage):
 
     def get_list(self, key):
         try:
-            return self.deserialize( self.storage.Get(key))
+            k = self.storage.Get(key)
+            return self.deserialize( k)
         except KeyError:
             return []

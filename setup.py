@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import sparselsh
 
 try:
@@ -15,7 +13,7 @@ setup(
     author_email='brandon@bxroberts.org',
     description='A locality sensitive hashing library with an emphasis on large (sparse) datasets.',
     url='https://github.com/brandonrobertz/sparselsh',
-    download_url='https://github.com/brandonrobertz/sparselsh/tarball/v1.0.0',
+    download_url='https://github.com/brandonrobertz/sparselsh/tarball/v1.1.0',
     keywords = ['clustering', 'sparse', 'lsh'],
     classifiers=[
         'Intended Audience :: Developers',

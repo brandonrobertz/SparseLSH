@@ -23,14 +23,14 @@ class IndexThenQueryTestCase(unittest.TestCase):
                    num_hashtables=1, 
                    storage_config={"dict":None}) 
 
-        for ix in xrange(X.shape[0]): 
+        for ix in range(X.shape[0]): 
             x = X.getrow(ix) 
             c = y[ix] 
             lsh.index( x, extra_data=c) 
 
         # find the point in X nearest to X_sim 
         points = lsh.query(X_sim, num_results=1) 
-        print points[0]
+        print(points[0])
         self.assertEqual( type(points[0][0][0]), csr_matrix)
         truth = points[0][0][0].todense() == X_sim.todense()
         self.assertTrue( truth.all())

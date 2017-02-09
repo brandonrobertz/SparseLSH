@@ -5,6 +5,7 @@ SparseLSH root directory.
 """
 from scipy.sparse import csr_matrix
 from sparselsh import LSH
+import sys
 
 X = csr_matrix( [
     [ 0, 0, 0, 0, 0, 0, 1],
@@ -52,7 +53,10 @@ def lsh_instance( bits, dimensions, hashtables, storage_type):
             'berkeleydb', 'leveldb', 'redis', 'dict'
     """
     if storage_type == 'berkeleydb':
-        conf = {'berkeleydb':{'filename': './db'}}
+        if sys.version_info[0] < 3:
+            conf = {'berkeleydb':{'filename': './db'}}
+        else:
+            raise NotImplmentedError('BerkeleyDB not supported in Python3')
     elif storage_type == 'leveldb':
         conf = {'leveldb':{'db': 'ldb'}}
     elif storage_type == 'redis':
@@ -67,7 +71,7 @@ def lsh_instance( bits, dimensions, hashtables, storage_type):
     return lsh
 
 def build_index( lsh, X, y):
-    for ix in xrange(X.shape[0]):
+    for ix in range(X.shape[0]):
         x = X.getrow(ix)
         c = None
         if y:
@@ -99,9 +103,13 @@ if __name__ == "__main__":
     bits = 4
     dimensions = X.shape[1]
     hashtables = 1
-    storage_types = ("dict", "redis", "leveldb", "berkeleydb")
+    storage_types = ["dict", "redis", "leveldb"]
+    if sys.version_info[0] == 2:
+        storage_types.append("berkeleydb")
     distance_functions = ("hamming", "euclidean", "true_euclidean",
             "centred_euclidean", "cosine", "l1norm")
     for s in storage_types:
+        print("Testing with backend", s)
         for d in distance_functions:
+            print("Testing distance function", d)
             run_lsh( bits, dimensions, hashtables, s, d)

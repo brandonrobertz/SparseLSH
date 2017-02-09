@@ -1,11 +1,11 @@
-# sparselsh/lsh.py
+from __future__ import print_function
 
 import os
 import json
 import numpy as np
 from scipy import sparse
 
-from storage import storage, serialize, deserialize
+from .storage import storage, serialize, deserialize
 
 class LSH(object):
     """ LSH implments locality sensitive hashing using random projection for
@@ -98,12 +98,12 @@ class LSH(object):
                     print("Cannot load specified file as a numpy array")
                     raise
                 else:
-                    npzfiles = sorted(npzfiles.items(), key=lambda x: x[0])
+                    npzfiles = sorted(list(npzfiles.items()), key=lambda x: x[0])
                     # TODO: to sparse
                     self.uniform_planes = [t[1] for t in npzfiles]
             else:
                 self.uniform_planes = [self._generate_uniform_planes()
-                                       for _ in xrange(self.num_hashtables)]
+                                       for _ in range(self.num_hashtables)]
                 try:
                     np.savez_compressed(self.matrices_filename,
                                         *self.uniform_planes)
@@ -112,14 +112,14 @@ class LSH(object):
                     raise
         else:
             self.uniform_planes = [self._generate_uniform_planes()
-                                   for _ in xrange(self.num_hashtables)]
+                                   for _ in range(self.num_hashtables)]
 
     def _init_hashtables(self):
         """ Initialize the hash tables such that each record will be in the
         form of "[storage1, storage2, ...]" """
 
         self.hash_tables = [storage(self.storage_config, i)
-                            for i in xrange(self.num_hashtables)]
+                            for i in range(self.num_hashtables)]
 
     def _generate_uniform_planes(self):
         """ Generate uniformly distributed hyperplanes and return it as a 2D
@@ -147,8 +147,8 @@ class LSH(object):
                   numbers only elements""")
             raise
         except ValueError as e:
-            print("""The input point needs to be of the same dimension as
-                  `input_dim` when initializing this LSH instance""", e)
+            print(("""The input point needs to be of the same dimension as
+                  `input_dim` when initializing this LSH instance""", e))
             raise
         else:
             return "".join(['1' if i > 0 else '0' for i in projections])
@@ -163,7 +163,7 @@ class LSH(object):
             return serial_or_sparse
 
         # here we have a serialized pickle object
-        if isinstance(serial_or_sparse, basestring):
+        if isinstance(serial_or_sparse, str):
             try:
                 deserial = deserialize(serial_or_sparse)
             except TypeError:
@@ -187,7 +187,7 @@ class LSH(object):
             try:
                 return deserial[0]
             except ValueError as e:
-                print("The input needs to be an array-like object", e)
+                print(("The input needs to be an array-like object", e))
                 raise
         else:
             raise TypeError("the input data is not supported")
@@ -251,14 +251,14 @@ class LSH(object):
         """
         assert sparse.issparse(query_point), "query_point needs to be sparse"
 
-        candidates = set()
+        candidates = []
         if not distance_func:
             distance_func = "euclidean"
 
             for i, table in enumerate(self.hash_tables):
                 # get hash of query point
                 binary_hash = self._hash(self.uniform_planes[i], query_point)
-                for key in table.keys():
+                for key in list(table.keys()):
                     # calculate distance from query point hash to all hashes
                     distance = LSH.hamming_dist(
                         self._string_bits_to_array(key),
@@ -266,7 +266,7 @@ class LSH(object):
                     # NOTE: we could make this threshold user defined
                     if distance < 2:
                         members = table.get_list(key)
-                        candidates.update(members)
+                        candidates.extend(members)
 
             d_func = LSH.euclidean_dist_square
 
@@ -288,7 +288,7 @@ class LSH(object):
             # TODO: pull out into fn w/ optional threshold arg
             for i, table in enumerate(self.hash_tables):
                 binary_hash = self._hash(self.uniform_planes[i], query_point)
-                candidates.update(table.get_list(binary_hash)[0])
+                candidates.extend(table.get_list(binary_hash)[0])
 
         # # rank candidates by distance function
         ranked_candidates = []

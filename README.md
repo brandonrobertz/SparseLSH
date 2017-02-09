@@ -24,6 +24,12 @@ BTC Donations: `1NejrUgQDm34CFyMHuaff9PNsd8zhd7SgR`
 
 ## Installation
 
+The easy way:
+
+    pip install sparselsh
+
+Or you can clone this repo and follow these instructions:
+
 `SparseLSH` depends on the following libraries:
 - [numpy](http://www.numpy.org/)
 - [scipy](http://www.scipy.org/)

@@ -5,6 +5,8 @@ try:
 except ImportError:
     from distutils.core import setup
 
+install_requires = ['numpy==1.8.1', 'scipy==0.14.0']
+
 setup(
     name='sparselsh',
     version=sparselsh.__version__,
@@ -13,8 +15,9 @@ setup(
     author_email='brandon@bxroberts.org',
     description='A locality sensitive hashing library with an emphasis on large (sparse) datasets.',
     url='https://github.com/brandonrobertz/sparselsh',
-    download_url='https://github.com/brandonrobertz/sparselsh/tarball/v1.1.0',
+    download_url='https://github.com/brandonrobertz/sparselsh/tarball/v1.1.1',
     keywords = ['clustering', 'sparse', 'lsh'],
+    install_requires=install_requires,
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',

@@ -1,18 +1,15 @@
-SparseLSH
-=========
+# SparseLSH
 
 A locality sensitive hashing library with an emphasis on large, highly-dimensional datasets.
 
-Features
---------
+## Features
 
 - Fast and memory-efficient calculations using sparse matrices.
 - Built-in support for key-value storage backends: pure-python, Redis (memory-bound), LevelDB, BerkeleyDB
 - Multiple hash indexes support (based on Kay Zhu's lshash)
 - Built-in support for common distance/objective functions for ranking outputs.
 
-Details
--------
+## Details
 
 SparseLSH is based on a fork of Kay Zhu's lshash, and is suited for datasets that won't
 fit into main memory or are highly dimensional. Using sparse matrices
@@ -25,15 +22,13 @@ pickle if it's not available.
 
 BTC Donations: `1NejrUgQDm34CFyMHuaff9PNsd8zhd7SgR`
 
-Installation
-------------
-`SparseLSH` depends on the following libraries:
+## Installation
 
+`SparseLSH` depends on the following libraries:
 - [numpy](http://www.numpy.org/)
 - [scipy](http://www.scipy.org/)
 
 Optionally (for in-memory and disk-based persistence):
-
 - [redis](https://pypi.python.org/pypi/redis/)
 - [leveldb](https://code.google.com/p/py-leveldb/)
 - [bsddb](https://pypi.python.org/pypi/bsddb3/6.0.1) (built-in on Python 2.7.x)
@@ -48,8 +43,8 @@ from the `optional-requirements.txt`:
 
     pip install -r optional-requirements.txt
 
-Quickstart
-----------
+## Quickstart
+
 To create 4-bit hashes for input data of 7 dimensions:
 
     from sparselsh import LSH
@@ -90,8 +85,7 @@ and invoking it's `todense` function:
     In [11]: print points[0][0][0].todense()
     [[1 1 1 1 1 1 1]]
 
-Main Interface
---------------
+## Main Interface
 
 Most of the parameters are supplied at class init time:
 

@@ -15,7 +15,7 @@ setup(
     author_email='brandon@bxroberts.org',
     description='A locality sensitive hashing library with an emphasis on large (sparse) datasets.',
     url='https://github.com/brandonrobertz/sparselsh',
-    download_url='https://github.com/brandonrobertz/sparselsh/tarball/0.3',
+    download_url='https://github.com/brandonrobertz/sparselsh/tarball/v1.0.0',
     keywords = ['clustering', 'sparse', 'lsh'],
     classifiers=[
         'Intended Audience :: Developers',

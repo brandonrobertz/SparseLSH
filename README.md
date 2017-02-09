@@ -71,7 +71,7 @@ To create 4-bit hashes for input data of 7 dimensions:
                num_hashtables=1,
                storage_config={"dict":None})
 
-    for ix in xrange(X.shape[0]):
+    for ix in range(X.shape[0]):
         x = X.getrow(ix)
         c = y[ix]
         lsh.index( x, extra_data=c)

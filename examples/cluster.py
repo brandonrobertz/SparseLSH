@@ -3,7 +3,12 @@ from __future__ import print_function
 import sparselsh
 from scipy.sparse import csr_matrix
 import numpy as np
-import cPickle as pickle
+try:
+    # Python 2
+    import cPickle as pickle
+except ImportError:
+    # Python 3
+    import pickle
 import argparse
 import re
 import math
@@ -37,8 +42,8 @@ def run(corpus_path, save_index=False, hashsize=128, output='clusters'):
     with open(corpus_path, 'r') as f:
         rawcorpus = f.readlines()
 
-    corpus = map( lambda rc: re.sub( '[^0-9a-z]', '', rc.lower()), rawcorpus)
-    maxlen = max( map( lambda x: len(x), corpus))
+    corpus = [re.sub( '[^0-9a-z]', '', rc.lower()) for rc in  rawcorpus]
+    maxlen = max([ len(x) for x in  corpus])
     size = len(corpus)
 
     X = np.zeros((size, maxlen))

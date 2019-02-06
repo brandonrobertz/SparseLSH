@@ -8,7 +8,7 @@ install_requires = ['numpy==1.8.1', 'scipy==0.14.0']
 
 setup(
     name='sparselsh',
-    version='1.1.2',
+    version='1.1.3',
     packages=['sparselsh'],
     author='Brandon Roberts',
     author_email='brandon@bxroberts.org',

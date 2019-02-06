@@ -1,22 +1,26 @@
+import setuptools
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
 
-install_requires = ['numpy==1.8.1', 'scipy==0.14.0']
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
-setup(
+
+setuptools.setup(
     name='sparselsh',
-    version='1.1.2',
-    packages=['sparselsh'],
+    version='1.1.3',
     author='Brandon Roberts',
     author_email='brandon@bxroberts.org',
     description='A locality sensitive hashing library with an emphasis on large (sparse) datasets.',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     url='https://github.com/brandonrobertz/sparselsh',
     download_url='https://github.com/brandonrobertz/sparselsh/tarball/v1.1.2',
     keywords = ['clustering', 'sparse', 'lsh'],
-    install_requires=install_requires,
+    packages = setuptools.find_packages(),
+    install_requires=[
+        'numpy==1.8.1',
+        'scipy==0.14.0'
+    ],
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',

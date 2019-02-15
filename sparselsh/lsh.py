@@ -4,6 +4,7 @@ import os
 import json
 import numpy as np
 from scipy import sparse
+from scipy.sparse import csr_matrix
 
 from .storage import storage, serialize, deserialize
 
@@ -246,66 +247,57 @@ class LSH(object):
         :param distance_func:
             (optional) The distance function to be used. Currently it needs to
             be one of ("hamming", "euclidean", "true_euclidean",
-            "centred_euclidean", "cosine", "l1norm"). By default "euclidean"
+            "cosine", "l1norm"). By default "euclidean"
             will used.
         """
         assert sparse.issparse(query_point), "query_point needs to be sparse"
 
-        candidates = []
-        if not distance_func:
-            distance_func = "euclidean"
-
-            for i, table in enumerate(self.hash_tables):
-                # get hash of query point
-                binary_hash = self._hash(self.uniform_planes[i], query_point)
-                for key in list(table.keys()):
-                    # calculate distance from query point hash to all hashes
-                    distance = LSH.hamming_dist(
-                        self._string_bits_to_array(key),
-                        self._string_bits_to_array(binary_hash))
-                    # NOTE: we could make this threshold user defined
-                    if distance < 2:
-                        members = table.get_list(key)
-                        candidates.extend(members)
-
+        if distance_func is None:
             d_func = LSH.euclidean_dist_square
-
+        elif distance_func == "euclidean":
+            d_func = LSH.euclidean_dist_square
+        elif distance_func == "true_euclidean":
+            d_func = LSH.euclidean_dist
+        elif distance_func == "cosine":
+            d_func = LSH.cosine_dist
+        elif distance_func == "l1norm":
+            d_func = LSH.l1norm_dist
+        elif distance_func == "hamming":
+            d_func = LSH.hamming_dist
         else:
+            raise ValueError(
+                "The distance function %s is invalid." % distance_func
+            )
 
-            if distance_func == "euclidean":
-                d_func = LSH.euclidean_dist_square
-            elif distance_func == "true_euclidean":
-                d_func = LSH.euclidean_dist
-            elif distance_func == "centred_euclidean":
-                d_func = LSH.euclidean_dist_centred
-            elif distance_func == "cosine":
-                d_func = LSH.cosine_dist
-            elif distance_func == "l1norm":
-                d_func = LSH.l1norm_dist
-            else:
-                raise ValueError("The distance function name is invalid.")
+        candidates = []
+        for i, table in enumerate(self.hash_tables):
+            # get hash of query point
+            binary_hash = self._hash(self.uniform_planes[i], query_point)
+            for key in list(table.keys()):
+                # calculate distance from query point hash to all hashes
+                distance = LSH.hamming_dist(
+                    self._string_bits_to_array(key),
+                    self._string_bits_to_array(binary_hash))
+                # NOTE: we could make this threshold user defined
+                if distance < 2:
+                    members = table.get_list(key)
+                    candidates.extend(members)
 
-            # TODO: pull out into fn w/ optional threshold arg
-            for i, table in enumerate(self.hash_tables):
-                binary_hash = self._hash(self.uniform_planes[i], query_point)
-                candidates.extend(table.get_list(binary_hash)[0])
-
-        # # rank candidates by distance function
+        # rank candidates by distance function
         ranked_candidates = []
         for ix in candidates:
             point = self._as_np_array(ix)
             dist = d_func(query_point, point)
             ranked_candidates.append( (ix,dist))
 
-        # TODO: stop sorting when we have top num_results, instead of truncating
-        # TODO: (do this by replacing set with ordered set)
-        # after we've done the entire list
         ranked_candidates.sort(key=lambda x: x[1])
 
-        return ranked_candidates[:num_results] if num_results else ranked_candidates
+        if not num_results:
+            return ranked_candidates
+
+        return ranked_candidates[:num_results]
 
     ### distance functions
-
     @staticmethod
     def hamming_dist(sparse1, sparse2):
         return (sparse1 != sparse2).sum()
@@ -313,20 +305,15 @@ class LSH(object):
     @staticmethod
     def euclidean_dist(x, y):
         diff = x - y
-        return sparse.csr_matrix.sqrt( diff.dot(diff))
+        return np.sqrt(diff.dot(diff.T))
 
     @staticmethod
     def euclidean_dist_square(x, y):
         diff = x - y
         if diff.nnz == 0:
             return 0.0
-        result = diff.dot(diff.transpose())
+        result = diff.dot(diff.T)
         return result.data[0]
-
-    @staticmethod
-    def euclidean_dist_centred(x, y):
-        diff = x.mean() - y.mean()
-        return diff.dot( diff)
 
     @staticmethod
     def l1norm_dist(x, y):
@@ -334,4 +321,6 @@ class LSH(object):
 
     @staticmethod
     def cosine_dist(x, y):
-        return 1 - x.dot(y) / ((x.dot(x) * y.dot(y)) ** 0.5)
+        x_n = csr_matrix.sqrt(csr_matrix.dot(x, x.T))
+        y_n = csr_matrix.sqrt(csr_matrix.dot(y, y.T))
+        return 1 - csr_matrix.dot(x, y.T) / (x_n * y_n)

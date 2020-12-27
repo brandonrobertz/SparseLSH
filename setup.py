@@ -7,18 +7,18 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='sparselsh',
-    version='2.0.1',
+    version='2.0.2',
     author='Brandon Roberts',
     author_email='brandon@bxroberts.org',
-    description='A locality sensitive hashing library with an emphasis on large (sparse) datasets.',
+    description='A locality sensitive hashing library with an emphasis on large, sparse datasets.',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://github.com/brandonrobertz/sparselsh',
-    download_url='https://github.com/brandonrobertz/sparselsh/tarball/v1.1.2',
+    download_url='https://github.com/brandonrobertz/SparseLSH/releases/tag/v2.0.2',
     keywords = ['clustering', 'sparse', 'lsh'],
     packages = setuptools.find_packages(),
     install_requires=[
-        'numpy>=1.18.4,<2',
+        'numpy>=1.18.4,<2.0',
         'scipy>=1.4.1,<2.0'
     ],
     classifiers=[

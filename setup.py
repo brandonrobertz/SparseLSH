@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='sparselsh',
-    version='1.1.3',
+    version='2.0.1',
     author='Brandon Roberts',
     author_email='brandon@bxroberts.org',
     description='A locality sensitive hashing library with an emphasis on large (sparse) datasets.',
@@ -18,8 +18,8 @@ setuptools.setup(
     keywords = ['clustering', 'sparse', 'lsh'],
     packages = setuptools.find_packages(),
     install_requires=[
-        'numpy==1.8.1',
-        'scipy==0.14.0'
+        'numpy>=1.18.4,<2',
+        'scipy>=1.4.1,<2.0'
     ],
     classifiers=[
         'Intended Audience :: Developers',

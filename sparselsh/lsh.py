@@ -2,8 +2,8 @@ from __future__ import print_function
 
 import os
 import numpy as np
+from operator import itemgetter
 from scipy import sparse
-from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_distances
 
 from .storage import storage, serialize, deserialize
@@ -209,6 +209,10 @@ class LSH(object):
         """
 
         assert sparse.issparse(input_points), "input_points needs to be sparse"
+        assert isinstance(extra_data, type(None)) or \
+            (not isinstance(extra_data, type(None)) and \
+            input_points.shape[0] == len(extra_data)), \
+            "input_points dimension needs to match extra data dimension"
 
         for i, table in enumerate(self.hash_tables):
             keys = self._hash(self.uniform_planes[i], input_points)
@@ -228,13 +232,13 @@ class LSH(object):
                     value = input_points[j]
                     table.append_val(keys[j].tobytes(), value)
 
-    def _string_bits_to_array( self, hash_key):
-        """ Take our hash keys (strings of 0 and 1) and turn it
+    def _bytes_string_to_array(self, hash_key):
+        """ Takes a hash key (bytes string) and turn it
         into a numpy matrix we can do calculations with.
 
         :param hash_key
         """
-        return np.array([float(i) for i in hash_key])
+        return np.array(list(hash_key))
 
     def query(self, query_points, num_results=None, distance_func="euclidean", dist_threshold=None):
         """ Takes `query_points` which is a sparse CSR matrix of N x `input_dim`,
@@ -310,32 +314,46 @@ class LSH(object):
             for j in range(query_points.shape[0]):
                 # Create a sublist of ranked candidate neighbors for each query point
                 if len(candidates[j]) > 0:
-                    candidates[j] = vstack(candidates[j])
-                    distances = d_func(candidates[j], query_points[j])
+                    # Remove extra info from candidates to convert them into a matrix
+                    cand = list(zip(*candidates[j]))[0]
+                    cand_csr = sparse.vstack(cand)
+                    distances = d_func(cand_csr, query_points[j])
                     accepted = np.where(distances < dist_threshold)
                     # Check if any suitable candidates
                     if np.any(accepted):
                         accepted = (np.unique(accepted[0]), np.unique(accepted[1]))
-                        neighbors = candidates[j][accepted[1],:]
+                        neighbors = cand_csr[accepted[1],:]
                         dists = distances[accepted[0],accepted[1]]
                         # rank candidates by distance function
                         indices = np.argsort(np.array(dists))
                         neighbors_sorted = neighbors[indices]
                         dists_sorted = dists[indices]
-                        ranked_candidates.append(tuple((neighbors_sorted, dists_sorted)))
+                        if not sparse.issparse(candidates[j][0]):
+                            # Sort extra_data by ranked distances
+                            extra_data_sorted = itemgetter(*list(indices))(list(zip(*candidates[j]))[1])
+                            ranked_candidates.append(tuple((neighbors_sorted, extra_data_sorted, dists_sorted)))
+                        else:
+                            ranked_candidates.append(tuple((neighbors_sorted, dists_sorted)))
                 else:
                     ranked_candidates.append(tuple())
         else:
             for j in range(query_points.shape[0]):
                 # Create a sublist of ranked candidate neighbors for each query point
                 if len(candidates[j]) > 0:
-                    candidates[j] = vstack(candidates[j])
-                    distances = d_func(candidates[j], query_points[j])[0]
+                    # Remove extra info from candidates to convert them into a matrix
+                    cand = list(zip(*candidates[j]))[0]
+                    cand_csr = sparse.vstack(cand)
+                    distances = d_func(cand_csr, query_points[j])[0]
                     # rank candidates by distance function
                     indices = np.argsort(np.array(distances))
-                    neighbors_sorted = candidates[j][indices]
+                    neighbors_sorted = cand_csr[indices]
                     dists_sorted = distances[indices]
-                    ranked_candidates.append(tuple((neighbors_sorted, dists_sorted)))
+                    if not sparse.issparse(candidates[j][0]):
+                        # Sort extra_data by ranked distances
+                        extra_data_sorted = itemgetter(*list(indices))(list(zip(*candidates[j]))[1])
+                        ranked_candidates.append(tuple((neighbors_sorted, extra_data_sorted, dists_sorted)))
+                    else:
+                        ranked_candidates.append(tuple((neighbors_sorted, dists_sorted)))
                 else:
                     ranked_candidates.append(tuple())
 

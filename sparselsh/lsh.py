@@ -222,14 +222,14 @@ class LSH(object):
                 # NOTE: needs to be tuple so it's set-hashable
                 for j in range(keys.shape[0]):
                     if not isinstance(extra_data[j], type(None)):
-                        value = (input_points[j], extra_data[j])
+                        value = tuple((input_points[j], extra_data[j]))
                         table.append_val(keys[j].tobytes(), value)
                     else:
                         value = input_points[j]
                         table.append_val(keys[j].tobytes(), value)
             else:
                 for j in range(keys.shape[0]):
-                    value = input_points[j]
+                    value = tuple(input_points[j])
                     table.append_val(keys[j].tobytes(), value)
 
     def _bytes_string_to_array(self, hash_key):
@@ -240,7 +240,7 @@ class LSH(object):
         """
         return np.array(list(hash_key))
 
-    def query(self, query_points, num_results=None, distance_func="euclidean", dist_threshold=None):
+    def query(self, query_points, num_results=None, distance_func=None, dist_threshold=None):
         """ Takes `query_points` which is a sparse CSR matrix of N x `input_dim`,
         returns `num_results` of results as a list of tuples that are ranked
         based on the supplied metric function `distance_func`.
@@ -266,7 +266,8 @@ class LSH(object):
         """
         assert sparse.issparse(query_points), "query_points needs to be sparse"
 
-        if distance_func == "euclidean":
+        if isinstance(distance_func, type(None)) or \
+            distance_func == "euclidean":
             d_func = LSH.euclidean_dist_square
         elif distance_func == "true_euclidean":
             d_func = LSH.euclidean_dist
@@ -314,21 +315,20 @@ class LSH(object):
             for j in range(query_points.shape[0]):
                 # Create a sublist of ranked candidate neighbors for each query point
                 if len(candidates[j]) > 0:
-                    # Remove extra info from candidates to convert them into a matrix
-                    cand = list(zip(*candidates[j]))[0]
+                    # Transofrm candidates (without extra_info) into a sparse matrix
+                    cand = tuple(zip(*candidates[j]))[0]
                     cand_csr = sparse.vstack(cand)
-                    distances = d_func(cand_csr, query_points[j])
-                    accepted = np.where(distances < dist_threshold)
-                    # Check if any suitable candidates
-                    if np.any(accepted):
-                        accepted = (np.unique(accepted[0]), np.unique(accepted[1]))
-                        neighbors = cand_csr[accepted[1],:]
-                        dists = distances[accepted[0],accepted[1]]
-                        # rank candidates by distance function
-                        indices = np.argsort(np.array(dists))
+                    distances = d_func(query_points[j], cand_csr)
+                    accepted = np.unique(np.where(distances < dist_threshold)[0])
+                    # Check if any acceptable candidates w.r.t. dist_threshold
+                    if accepted.size > 0:
+                        neighbors = cand_csr[accepted,:]
+                        dists = distances[accepted]
+                        # Rank candidates by distance function
+                        indices = np.argsort(dists)
                         neighbors_sorted = neighbors[indices]
                         dists_sorted = dists[indices]
-                        if not sparse.issparse(candidates[j][0]):
+                        if len(candidates[j][0]) == 2:
                             # Sort extra_data by ranked distances
                             extra_data_sorted = itemgetter(*list(indices))(list(zip(*candidates[j]))[1])
                             ranked_candidates.append(tuple((neighbors_sorted, extra_data_sorted, dists_sorted)))
@@ -341,14 +341,14 @@ class LSH(object):
                 # Create a sublist of ranked candidate neighbors for each query point
                 if len(candidates[j]) > 0:
                     # Remove extra info from candidates to convert them into a matrix
-                    cand = list(zip(*candidates[j]))[0]
+                    cand = tuple(zip(*candidates[j]))[0]
                     cand_csr = sparse.vstack(cand)
-                    distances = d_func(cand_csr, query_points[j])[0]
-                    # rank candidates by distance function
+                    distances = d_func(query_points[j], cand_csr)
+                    # Rank candidates by distance function
                     indices = np.argsort(np.array(distances))
                     neighbors_sorted = cand_csr[indices]
                     dists_sorted = distances[indices]
-                    if not sparse.issparse(candidates[j][0]):
+                    if len(candidates[j][0]) == 2:
                         # Sort extra_data by ranked distances
                         extra_data_sorted = itemgetter(*list(indices))(list(zip(*candidates[j]))[1])
                         ranked_candidates.append(tuple((neighbors_sorted, extra_data_sorted, dists_sorted)))
@@ -371,21 +371,34 @@ class LSH(object):
 
     @staticmethod
     def euclidean_dist(x, Y):
-        diff = Y - x
-        return np.sqrt(diff.dot(diff.T))
+        # repeat x as many times as the number of rows in Y
+        xx = sparse.csr_matrix(np.ones([Y.shape[0], 1]) * x)
+        diff = Y - xx
+        dists = np.sqrt(diff.dot(diff.T).diagonal()).reshape((1,-1))
+        return dists[0]
 
     @staticmethod
     def euclidean_dist_square(x, Y):
-        diff = Y - x
+        # repeat x as many times as the number of rows in Y
+        xx = sparse.csr_matrix(np.ones([Y.shape[0], 1]) * x)
+        diff = Y - xx
         if diff.nnz == 0:
-            return 0.0
-        result = diff.dot(diff.T)
-        return result.data[0]
+            dists = np.zeros((1, Y.shape[0]))
+        else:
+            if Y.shape[0] > 1:
+                dists = diff.dot(diff.T).diagonal().reshape((1,-1))
+            else:
+                dists = diff.dot(diff.T).toarray()
+        return dists[0]
 
     @staticmethod
     def l1norm_dist(x, Y):
-        return abs(Y - x).sum(axis=1)
+        # repeat x as many times as the number of rows in Y
+        xx = sparse.csr_matrix(np.ones([Y.shape[0], 1]) * x)
+        dists = np.asarray(abs(Y - xx).sum(axis=1).reshape((1,-1)))
+        return dists[0]
 
     @staticmethod
     def cosine_dist(x, Y):
-        return cosine_distances(Y, x)
+        dists = cosine_distances(x, Y)
+        return dists[0]

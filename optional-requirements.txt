@@ -1,4 +1,4 @@
 leveldb==0.193
-numpy==1.8.1
+numpy>=1.18.4,<2.0
+scipy>=1.4.1,<2.0
 redis==2.10.1
-scipy==0.14.0

@@ -60,6 +60,7 @@ class LSH(object):
         self.hash_size = hash_size
         self.input_dim = input_dim
         self.num_hashtables = num_hashtables
+        self.indexed_counter = 0
 
         if storage_config is None:
             storage_config = {'dict': None}
@@ -222,7 +223,7 @@ class LSH(object):
 
                 # NOTE: needs to be tuple so it's set-hashable
                 for j in range(keys.shape[0]):
-                    value = tuple((input_points[j], j, extra_data[j]))
+                    value = tuple((input_points[j], self.indexed_counter + j, extra_data[j]))
                     table.append_val(keys[j].tobytes(), value)
         else:
             for i, table in enumerate(self.hash_tables):
@@ -232,8 +233,10 @@ class LSH(object):
 
                 # NOTE: needs to be tuple so it's set-hashable
                 for j in range(keys.shape[0]):
-                    value = tuple((input_points[j], j, None))
+                    value = tuple((input_points[j], self.indexed_counter + j, None))
                     table.append_val(keys[j].tobytes(), value)
+        
+        self.indexed_counter += input_points.shape[0]
 
     def _bytes_string_to_array(self, hash_key):
         """ Takes a hash key (bytes string) and turn it

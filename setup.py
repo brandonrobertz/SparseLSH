@@ -14,7 +14,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://github.com/brandonrobertz/sparselsh',
-    download_url='https://github.com/brandonrobertz/SparseLSH/releases/tag/v2.0.2',
+    download_url='https://github.com/brandonrobertz/SparseLSH/releases/tag/v2.1.0',
     keywords = ['clustering', 'sparse', 'lsh'],
     packages = setuptools.find_packages(),
     install_requires=[

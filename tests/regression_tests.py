@@ -3,6 +3,7 @@ from sparselsh import LSH
 from scipy.sparse import csr_matrix
 import unittest
 
+
 class IndexThenQueryTestCase(unittest.TestCase):
     """ Holding place for general regression tests for thing we
     find when indexing and then querying items.
@@ -40,6 +41,7 @@ class IndexThenQueryTestCase(unittest.TestCase):
         self.assertEqual( type(points[0][0][0]), csr_matrix)
         truth = points[0][0][0].todense() == X_sim.todense()
         self.assertTrue( truth.all())
+
 
 if __name__ == '__main__':
     unittest.main()

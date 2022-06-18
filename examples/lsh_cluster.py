@@ -14,20 +14,24 @@ import re
 import math
 import operator
 
+
 def parse_args():
-    desc = 'Search for optimal hyperparams for a given corpus, saving ' \
-        'models as we go.'
+    desc = 'An example tool that will build clusters using a LSH index from an input file containing one record per line. The output will be either a list of cluster groups or the within set sum of squared errors for the given hash size (enabling search for optimal hash-size when ran multiple times with different --hashsize params).'
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument(
         'corpus', type=str,
-        help='Path to file, one line per clusterable entity.')
+        help='Path to file, one record per line.')
     parser.add_argument(
-        '--save', type=str,
+        '--save-model', dest="save", action="store_true",
         help='Save model to specified file. By default, index is not saved.')
     parser.add_argument(
-        '--hashsize', type=int, default=128,
-        help='Size of hash. Smaller sizes create fewer "buckets" and hence ' \
-        'more variance between items in the bucket.')
+        '--hashsize', type=int, default=256,
+        help='Size of hash. Smaller sizes create fewer "buckets" and more ' \
+        'dissimilar things will end up in the same bucket.')
+    parser.add_argument(
+        '--num-tables', dest="tables", type=int, default=1,
+        help='Number of hyperplanes to use. This doubles the potential memory '\
+        'usage but increases accuracy.')
     parser.add_argument(
         '--output', type=str, choices=[
             'clusters','wssse'
@@ -37,7 +41,9 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def run(corpus_path, save_index=False, hashsize=128, output='clusters'):
+
+def run(corpus_path, save_index=False, hashsize=128, output='clusters',
+        num_tables=1):
     rawcorpus = None
     with open(corpus_path, 'r') as f:
         rawcorpus = f.readlines()
@@ -46,6 +52,7 @@ def run(corpus_path, save_index=False, hashsize=128, output='clusters'):
     maxlen = max([ len(x) for x in  corpus])
     size = len(corpus)
 
+    # break up text lines into fixed-length int matrix
     X = np.zeros((size, maxlen))
     for i in range(size):
         c = corpus[i]
@@ -54,11 +61,9 @@ def run(corpus_path, save_index=False, hashsize=128, output='clusters'):
 
     Xs = csr_matrix(X)
     lsh = sparselsh.LSH(
-        hashsize, Xs.shape[1], num_hashtables=1)
-    for i in range(Xs.shape[0]):
-        x = Xs.getrow(i)
-        c = rawcorpus[i]
-        lsh.index( x, extra_data=c)
+        hashsize, Xs.shape[1], num_hashtables=num_tables
+    )
+    lsh.index(Xs, extra_data=rawcorpus)
 
     if save_index:
         with open(save_index, 'wb') as f:
@@ -66,14 +71,17 @@ def run(corpus_path, save_index=False, hashsize=128, output='clusters'):
 
     if output == 'clusters':
         t = lsh.hash_tables[0]
-        for k in t.keys():
+        print("Group #,Data")
+        for k_ix, k in enumerate(t.keys()):
             vals = t.get_val(k)
             n_vals = len(vals)
-            if n_vals == 1:
-                continue
-            print('\n', k, n_vals)
+            # if n_vals == 1:
+            #     continue
+            # print('\n', k, n_vals)
+            print()
             for val in vals:
-                print(re.sub('\r|\n', '', val[1]))
+                print(str(k_ix) + "," + re.sub('\r|\n', '', val[1]).strip())
+                # print(re.sub('\r|\n', '', val[1]))
 
     elif output == 'wssse':
         cluster_keys = lsh.hash_tables[0].keys()
@@ -105,4 +113,6 @@ if __name__ == '__main__':
     args = parse_args()
     save = args.save if args.save else False
     hashsize = args.hashsize
-    run(args.corpus, save_index=save, hashsize=hashsize, output=args.output)
+    num_tables = args.tables if args.tables else 1
+    run(args.corpus, save_index=save, hashsize=hashsize, output=args.output,
+        num_tables=num_tables)

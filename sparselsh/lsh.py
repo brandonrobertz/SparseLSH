@@ -5,6 +5,7 @@ import numpy as np
 from operator import itemgetter
 from scipy import sparse
 from sklearn.metrics.pairwise import cosine_distances
+from scipy.spatial.distance import hamming
 
 from .storage import storage, serialize, deserialize
 
@@ -209,27 +210,29 @@ class LSH(object):
         """
 
         assert sparse.issparse(input_points), "input_points needs to be sparse"
-        assert isinstance(extra_data, type(None)) or \
-            (not isinstance(extra_data, type(None)) and \
-            input_points.shape[0] == len(extra_data)), \
-            "input_points dimension needs to match extra data dimension"
+        if input_points.shape[0] != 1:
+            assert (extra_data is None) or \
+                (extra_data is not None and \
+                input_points.shape[0] == len(extra_data)), \
+                "input_points dimension needs to match extra data dimension"
 
         for i, table in enumerate(self.hash_tables):
             keys = self._hash(self.uniform_planes[i], input_points)
             # NOTE: there was a bug with 0-equal extra_data
             # we need to allow blank extra_data if it's provided
-            if not isinstance(extra_data, type(None)):
+            if extra_data is not None:
                 # NOTE: needs to be tuple so it's set-hashable
                 for j in range(keys.shape[0]):
-                    if not isinstance(extra_data[j], type(None)):
-                        value = tuple((input_points[j], extra_data[j]))
-                        table.append_val(keys[j].tobytes(), value)
-                    else:
-                        value = input_points[j]
-                        table.append_val(keys[j].tobytes(), value)
+                    # only split up extra_data if our input shape is greater
+                    # than one. in that case we assume extra_data length is
+                    # the same as length of the input points. not doing this
+                    # causes the extra_data to be truncated to a single char
+                    extra = extra_data[j] if input_points.shape[0] > 1 else extra_data
+                    value = (input_points[j], extra)
+                    table.append_val(keys[j].tobytes(), value)
             else:
                 for j in range(keys.shape[0]):
-                    value = tuple(input_points[j])
+                    value = (input_points[j],)
                     table.append_val(keys[j].tobytes(), value)
 
     def _bytes_string_to_array(self, hash_key):
@@ -243,7 +246,50 @@ class LSH(object):
     def query(self, query_points, num_results=None, distance_func=None, dist_threshold=None):
         """ Takes `query_points` which is a sparse CSR matrix of N x `input_dim`,
         returns `num_results` of results as a list of tuples that are ranked
-        based on the supplied metric function `distance_func`.
+        based on the supplied metric function `distance_func`. The exact return
+        value dimensions depends on if query_points is 1 or more dimensional.
+
+        Example query return with 1-dimensional (single row) query_points:
+
+            ```
+            # Dimension 0: Results
+            [
+                # Dimension 1: Data & distance
+                (
+                    # Tuple: record, label
+                    (<1x7 sparse matrix of type ...>, 'three'),
+                    # Distance score
+                    1.0
+                ),
+                (
+                    (<1x7 sparse matrix of type ...>, 'three'),
+                    1.0
+                )
+            ]
+            ```
+
+
+        Example query return with 2 query_points:
+
+            ```
+            # Dimension 0: Query points
+            [
+                # Dimension 1: Results
+                [
+                    # Dimension 2: Data & distance
+                    (
+                        # Tuple: record, label
+                        (<1x7 sparse matrix of type ...>, 'three'),
+                        # Distance score
+                        1.0
+                    ),
+                    (
+                        (<1x7 sparse matrix of type ...>, 'three'),
+                        1.0
+                    )
+                ]
+            ]
+            ```
 
         :param query_points:
             A sparse CSR matrix. The dimension needs to be N x `input_dim`, N>0.
@@ -266,8 +312,7 @@ class LSH(object):
         """
         assert sparse.issparse(query_points), "query_points needs to be sparse"
 
-        if isinstance(distance_func, type(None)) or \
-            distance_func == "euclidean":
+        if distance_func is None or distance_func == "euclidean":
             d_func = LSH.euclidean_dist_square
         elif distance_func == "true_euclidean":
             d_func = LSH.euclidean_dist
@@ -277,42 +322,48 @@ class LSH(object):
             d_func = LSH.l1norm_dist
         elif distance_func == "hamming":
             d_func = LSH.hamming_dist
-            raise ValueError(
-                "The distance function %s has not been implemented yet." % distance_func
-            )
         else:
             raise ValueError(
                 "The distance function %s is invalid." % distance_func
             )
-        if not isinstance(dist_threshold, type(None)) and \
+        if dist_threshold is not None and \
             (dist_threshold <= 0 or (distance_func == "cosine" and dist_threshold > 1.0)):
             raise ValueError(
                 "The distance threshold %s is invalid." % dist_threshold
             )
-        if not isinstance(num_results, type(None)) and num_results < 1:
+        if num_results is not None and num_results < 1:
             raise ValueError(
                 "The max amount of results %s is invalid." % num_results
             )
 
         # Create a list of lists of candidate neighbors
+        # NOTE: Currently this only does exact matching on hash key, the
+        # previous version also got the 2 most simlilar hashes and included
+        # the contents of those as well. Not sure if this should actually
+        # be done since we can change hash size or add more tables to get
+        # better accuracy
         candidates = []
         for i, table in enumerate(self.hash_tables):
             # get hashes of query points for the specific plane
             keys = self._hash(self.uniform_planes[i], query_points)
             for j in range(keys.shape[0]):
+                # TODO: go through each hashkey in table and do the following
+                # if the key is more similar to hashkey than hamming dist < 2
+
                 # Create a sublist of candidate neighbors for each query point
                 if len(candidates) <= j:
                     candidates.append([])
                 new_candidates = table.get_list(keys[j].tobytes())
-                if not isinstance(new_candidates, type(None)) and len(new_candidates) > 0:
+                if new_candidates is not None and len(new_candidates) > 0:
                     candidates[j].extend(new_candidates)
 
         # Create a ranked list of lists of candidate neighbors
         ranked_candidates = []
 
         # If a distance threshold is requested
-        if not isinstance(dist_threshold, type(None)):
+        if dist_threshold is not None:
             for j in range(query_points.shape[0]):
+
                 # Create a sublist of ranked candidate neighbors for each query point
                 if len(candidates[j]) > 0:
                     # Transofrm candidates (without extra_info) into a sparse matrix
@@ -328,46 +379,91 @@ class LSH(object):
                         indices = np.argsort(dists)
                         neighbors_sorted = neighbors[indices]
                         dists_sorted = dists[indices]
+                        # if we have extra data
                         if len(candidates[j][0]) == 2:
                             # Sort extra_data by ranked distances
                             extra_data_sorted = itemgetter(*list(indices))(list(zip(*candidates[j]))[1])
-                            ranked_candidates.append(tuple((neighbors_sorted, extra_data_sorted, dists_sorted)))
+                            ranked_candidates.append((neighbors_sorted, extra_data_sorted, dists_sorted))
                         else:
-                            ranked_candidates.append(tuple((neighbors_sorted, dists_sorted)))
+                            ranked_candidates.append((neighbors_sorted, dists_sorted))
                 else:
                     ranked_candidates.append(tuple())
+
         else:
+
+            # for each query point ...
+            # Create a sublist of ranked candidate neighbors for each query point
             for j in range(query_points.shape[0]):
-                # Create a sublist of ranked candidate neighbors for each query point
-                if len(candidates[j]) > 0:
-                    # Remove extra info from candidates to convert them into a matrix
-                    cand = tuple(zip(*candidates[j]))[0]
-                    cand_csr = sparse.vstack(cand)
-                    distances = d_func(query_points[j], cand_csr)
-                    # Rank candidates by distance function
-                    indices = np.argsort(np.array(distances))
-                    neighbors_sorted = cand_csr[indices]
-                    dists_sorted = distances[indices]
-                    if len(candidates[j][0]) == 2:
-                        # Sort extra_data by ranked distances
-                        extra_data_sorted = itemgetter(*list(indices))(list(zip(*candidates[j]))[1])
-                        ranked_candidates.append(tuple((neighbors_sorted, extra_data_sorted, dists_sorted)))
-                    else:
-                        ranked_candidates.append(tuple((neighbors_sorted, dists_sorted)))
+                point_results = []
+                # hash candidates from above for jth query point
+                row_candidates = candidates[j]
+                # print("row_candidates", row_candidates)
+
+                # Remove extra info from candidates to convert them into a matrix
+                cands = []
+                extra_datas = []
+                for row in row_candidates:
+                    # print("row", row)
+                    cands.append(row[0])
+                    if len(row) == 2:
+                        extra_datas.append(row[1])
+
+                if not cands:
+                    ranked_candidates.append(point_results)
+                    continue
+
+                # print("cands:", cands, "extra_datas:", extra_datas)
+                cand_csr = sparse.vstack(cands)
+                distances = d_func(query_points[j], cand_csr)
+
+                # Rank candidates by distance function
+                indices = np.argsort(np.array(distances))
+                neighbors_sorted = cand_csr[indices]
+                dists_sorted = distances[indices]
+
+                # if we have extra data
+                if extra_datas:
+                    # Sort extra_data by ranked distances
+                    extra_data_sorted = itemgetter(*list(indices))(extra_datas)
+
+                    for ix, (neigh, ext) in enumerate(zip(neighbors_sorted, extra_data_sorted)):
+                        if num_results is not None and ix >= num_results:
+                            break
+                        dist = dists_sorted[ix]
+                        point_results.append(((neigh, ext), dist))
+
                 else:
-                    ranked_candidates.append(tuple())
+                    for ix, neigh in enumerate(neighbors_sorted):
+                        if num_results is not None and ix >= num_results:
+                            break
+                        dist = dists_sorted[ix]
+                        point_results.append(((neigh,), dist))
 
-        if not isinstance(num_results, type(None)):
-            for j in range(len(ranked_candidates)):
-                if len(ranked_candidates[j]) > 0 and ranked_candidates[j][0].shape[0] > num_results:
-                    ranked_candidates[j] = (ranked_candidates[j][0][:num_results], ranked_candidates[j][1][:num_results])
+                ranked_candidates.append(point_results)
 
+
+        # if num_results is not None:
+        #     print("Returning", num_results, "results", len(ranked_candidates[:num_results]))
+        #     return ranked_candidates[:num_results]
+
+        # if num_results is not None:
+        #     for j in range(len(ranked_candidates)):
+        #         ranked_candidates[j] = ranked_candidates[j][:num_results]
+
+        if query_points.shape[0] == 1:
+            # Backwards compat fix
+            return ranked_candidates[0]
+
+        print("Returning", num_results, ranked_candidates)
         return ranked_candidates
 
     ### distance functions
     @staticmethod
     def hamming_dist(x, Y):
-        return (Y != x).sum(axis=1)
+        dists = np.zeros(Y.shape[0])
+        for ix, y in enumerate(Y):
+            dists[ix] = hamming(x, y)
+        return dists
 
     @staticmethod
     def euclidean_dist(x, Y):

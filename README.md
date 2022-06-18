@@ -5,7 +5,7 @@ A locality sensitive hashing library with an emphasis on large, highly-dimension
 ## Features
 
 - Fast and memory-efficient calculations using sparse matrices.
-- Built-in support for key-value storage backends: pure-python, Redis (memory-bound), LevelDB, BerkeleyDB
+- Built-in support for key-value storage backends: pure-Python, Redis (memory-bound), LevelDB, BerkeleyDB
 - Multiple hash indexes support (based on Kay Zhu's lshash)
 - Built-in support for common distance/objective functions for ranking outputs.
 
@@ -49,30 +49,34 @@ from the `optional-requirements.txt`:
 
 ## Quickstart
 
+You can quickly test LSH using the bundled `lsh_cluster.py` script, found in `examples/` directory. Simply pass the path to a file containing records to be clustered, one per line, and the script will output groups of similar items.
+
+    ./examples/lsh_cluster.py path/to/recordsfile.txt
+
 To create 4-bit hashes for input data of 7 dimensions:
 
     from sparselsh import LSH
     from scipy.sparse import csr_matrix
 
-    X = csr_matrix( [
-        [ 3, 0, 0, 0, 0, 0, -1],
-        [ 0, 1, 0, 0, 0, 0,  1],
-        [ 1, 1, 1, 1, 1, 1,  1] ])
+    X = csr_matrix([
+        [3, 0, 0, 0, 0, 0, -1],
+        [0, 1, 0, 0, 0, 0,  1],
+        [1, 1, 1, 1, 1, 1,  1]
+    ])
 
-    # One class number for each input point
-    y = [ 0, 3, 10]
+    # One label for each input point
+    y = ["label-one", "second", "last"]
 
-    X_sim = csr_matrix( [ [ 1, 1, 1, 1, 1, 1, 0]])
+    X_sim = csr_matrix([[1, 1, 1, 1, 1, 1, 0]])
 
-    lsh = LSH( 4,
-               X.shape[1],
-               num_hashtables=1,
-               storage_config={"dict":None})
+    lsh = LSH(
+        4,
+        X.shape[1],
+        num_hashtables=1,
+        storage_config={"dict":None}
+    )
 
-    for ix in range(X.shape[0]):
-        x = X.getrow(ix)
-        c = y[ix]
-        lsh.index( x, extra_data=c)
+    lsh.index(X, extra_data=y)
 
     # find the point in X nearest to X_sim
     points = lsh.query(X_sim, num_results=1)
@@ -81,13 +85,19 @@ The query will result in a list of matrix-class tuple & similarity
 score tuples. A lower score is better in this case:
 
     [((<1x7 sparse matrix of type '<type 'numpy.int64'>'
-        with 7 stored elements in Compressed Sparse Row format>, 10), 1)]
+        with 7 stored elements in Compressed Sparse Row format>, 'label'), 1)]
 
 We can look at the most similar matched item by accessing the sparse array
 and invoking it's `todense` function:
 
     In [11]: print points[0][0][0].todense()
     [[1 1 1 1 1 1 1]]
+
+You can also pass multiple records to `query` by simply increasing the
+dimension of the input to `query`. This will change the output data
+to have one extra dimension, representing the input query. (NOTE: When
+then dimension is 1, a.k.a. a single sparse row, this extra dimension won't
+be added.)
 
 ## Main Interface
 

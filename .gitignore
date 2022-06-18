@@ -17,3 +17,6 @@ ldb/
 
 *.swp
 *.swo
+
+*.csv
+/cluster.py

@@ -24,12 +24,15 @@ try:
 except ImportError:
     import pickle
 
+
 def serialize( data):
     return pickle.dumps( data, protocol=2)
 def deserialize( data):
     return pickle.loads( data)
 
+
 __all__ = ['storage']
+
 
 def storage(storage_config, index):
     """ Given the configuration for storage and the index, return the
@@ -46,6 +49,7 @@ def storage(storage_config, index):
         return LevelDBStorage(storage_config['leveldb'])
     else:
         raise ValueError("Only in-memory dictionary, berkeleydb, leveldb, and redis are supported.")
+
 
 class BaseStorage(object):
     def __init__(self, config):
@@ -107,6 +111,7 @@ class InMemoryStorage(BaseStorage):
     def get_list(self, key):
         return self.storage.get(key, [])
 
+
 class RedisStorage(BaseStorage):
     def __init__(self, config):
         if not redis:
@@ -130,6 +135,7 @@ class RedisStorage(BaseStorage):
         # TODO: find a better way to do this
         values = self.storage.lrange(key, 0, -1)
         return [ deserialize(v)for v in values]
+
 
 class BerkeleyDBStorage(BaseStorage):
     def __init__(self, config):
@@ -165,10 +171,11 @@ class BerkeleyDBStorage(BaseStorage):
         except KeyError:
             return []
 
+
 class LevelDBStorage(BaseStorage):
     def __init__(self, config):
         if not leveldb:
-            raise ImportError("leveldb is required to use Redis as storage.")
+            raise ImportError("leveldb is required to use LevelDB as storage.")
         if 'db' not in config:
             raise ValueError("You must specify LevelDB filename as 'db' in your config")
         self.storage = leveldb.LevelDB( config['db'])

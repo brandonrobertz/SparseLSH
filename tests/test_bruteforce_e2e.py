@@ -73,7 +73,7 @@ def lsh_instance( bits, dimensions, hashtables, storage_type):
         if sys.version_info[0] < 3:
             conf = {'berkeleydb':{'filename': './db'}}
         else:
-            raise NotImplmentedError('BerkeleyDB not supported in Python3')
+            raise NotImplementedError('BerkeleyDB not supported in Python3')
     elif storage_type == 'leveldb':
         conf = {'leveldb':{'db': 'ldb'}}
     elif storage_type == 'redis':

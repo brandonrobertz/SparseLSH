@@ -9,6 +9,12 @@ try:
 except ImportError:
     # Python 3
     import pickle
+try:
+    # Python <= 2.7
+    reduce
+except NameError:
+    # Python 3
+    from functools import reduce
 import argparse
 import re
 import math

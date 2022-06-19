@@ -67,8 +67,6 @@ To create 4-bit hashes for input data of 7 dimensions:
     # One label for each input point
     y = ["label-one", "second", "last"]
 
-    X_sim = csr_matrix([[1, 1, 1, 1, 1, 1, 0]])
-
     lsh = LSH(
         4,
         X.shape[1],
@@ -78,18 +76,26 @@ To create 4-bit hashes for input data of 7 dimensions:
 
     lsh.index(X, extra_data=y)
 
+    # Build a 1-D (single row) sparse matrix
+    X_sim = csr_matrix([[1, 1, 1, 1, 1, 1, 0]])
     # find the point in X nearest to X_sim
     points = lsh.query(X_sim, num_results=1)
 
-The query will result in a list of matrix-class tuple & similarity
-score tuples. A lower score is better in this case:
+The query above result in a list of matrix-class tuple & similarity
+score tuples. A lower score is better in this case (the score here is 1.0).
+Here's a breakdown of the return value when `query` is called with a
+single input row (1-dimensional sparse matrix, the output is different
+when passing multiple query points):
 
-    [((<1x7 sparse matrix of type '<type 'numpy.int64'>'
-        with 7 stored elements in Compressed Sparse Row format>, 'label'), 1)]
+    [((<1x7 sparse matrix of type '<type 'numpy.int64'>' with 7 stored elements in Compressed Sparse Row format>, 'label'), 1.0)]
 
 We can look at the most similar matched item by accessing the sparse array
 and invoking it's `todense` function:
 
+    #                      ,------- Get first result-score tuple
+    #                     |   ,---- Get data. [1] is distance score
+    #                     |  |  ,-- Get the point. [1] is extra_data
+    #                     |  |  |
     In [11]: print points[0][0][0].todense()
     [[1 1 1 1 1 1 1]]
 
@@ -97,7 +103,17 @@ You can also pass multiple records to `query` by simply increasing the
 dimension of the input to `query`. This will change the output data
 to have one extra dimension, representing the input query. (NOTE: When
 then dimension is 1, a.k.a. a single sparse row, this extra dimension won't
-be added.)
+be added.) Here's the output when `query` is passed a 2-dimensional input:
+
+    [
+      [((<1x7 sparse matrix ...>, 'label'), 1.0)],
+      [((<1x7 sparse matrix ...>, 'extra'), 0.8),
+       ((<1x7 sparse matrix ...>, 'another'), 0.3)]
+    ]
+
+Here, you can see an extra dimension, one for each query point passed
+to `query`. The data structure for each query point result is the same
+as the 1-Dimensional output.
 
 ## Main Interface
 
@@ -123,7 +139,8 @@ Parameters:
     num_hashtables = 1:
         (optional) The number of hash tables used. More hashtables increases the
         probability of hash-collisions and the more similar items are likely
-        to be found for a query item.
+        to be found for a query item. Increase this to get better accuracy
+        at the expense of increased memory usage.
 
     storage = None:
         (optional) A dict representing the storage backend and configuration

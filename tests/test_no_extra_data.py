@@ -27,10 +27,11 @@ class NoExtraDataTestCase(unittest.TestCase):
         self.assertTrue(eq.all, msg)
 
     def test_can_index_matrix_input(self):
-        X = csr_matrix( [
+        X = csr_matrix([
             [ 3, 0, 0, 0, 0, 0, -1],
             [ 0, 1, 0, 0, 0, 0,  1],
-            [ 1, 1, 1, 1, 1, 1,  1] ])
+            [ 1, 1, 1, 1, 1, 1,  1]
+        ])
 
         # I've changed the last 1 to a 0
         X_sim = csr_matrix([[1, 1, 1, 1, 1, 1, 0],[1, 1, 1, 1, 1, 1, 0]])

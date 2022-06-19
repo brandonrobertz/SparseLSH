@@ -173,7 +173,7 @@ class LSH(object):
                 print("The value stored is not deserializable")
                 raise
         else:
-            # If extra_data exists, `tuples` is the entire
+            # If extra_data exists, `tuple` is the entire
             # (point:sparse, extra_daa). Otherwise (i.e., extra_data=None),
             # return the point stored as a tuple
             deserial = serial_or_sparse
@@ -184,7 +184,7 @@ class LSH(object):
 
         if isinstance(deserial[0], tuple):
             # extra data was supplied, return point
-            return tuples[0]
+            return tuple[0]
 
         elif isinstance(deserial, (tuple, list)):
             try:

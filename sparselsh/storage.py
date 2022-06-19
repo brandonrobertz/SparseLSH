@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-import time
 import pickle
 import sys
 
@@ -25,10 +24,10 @@ except ImportError:
     import pickle
 
 
-def serialize( data):
-    return pickle.dumps( data, protocol=2)
-def deserialize( data):
-    return pickle.loads( data)
+def serialize(data):
+    return pickle.dumps(data, protocol=2)
+def deserialize(data):
+    return pickle.loads(data)
 
 
 __all__ = ['storage']
@@ -56,11 +55,11 @@ class BaseStorage(object):
         """ An abstract class used as an adapter for storages. """
         raise NotImplementedError
 
-    def serialize( self, data):
-        return serialize( data)
+    def serialize(self, data):
+        return serialize(data)
 
-    def deserialize( self, data):
-        return deserialize( data)
+    def deserialize(self, data):
+        return deserialize(data)
 
     def keys(self):
         """ Returns a list of binary hashes that are used as dict keys. """
@@ -134,14 +133,14 @@ class RedisStorage(BaseStorage):
     def get_list(self, key):
         # TODO: find a better way to do this
         values = self.storage.lrange(key, 0, -1)
-        return [ deserialize(v)for v in values]
+        return [deserialize(v)for v in values]
 
 
 class BerkeleyDBStorage(BaseStorage):
     def __init__(self, config):
         if 'filename' not in config:
             raise ValueError("You must supply a 'filename' in your config")
-        self.storage = bsddb.hashopen( config['filename'])
+        self.storage = bsddb.hashopen(config['filename'])
 
     def __exit__(self, type, value, traceback):
         self.storage.sync()
@@ -157,12 +156,12 @@ class BerkeleyDBStorage(BaseStorage):
 
     def append_val(self, key, val):
         try:
-            current = self.deserialize( self.storage[key])
+            current = self.deserialize(self.storage[key])
         except KeyError:
             current = []
 
         # update new list
-        current.append( val)
+        current.append(val)
         self.storage[key] = self.serialize(current)
 
     def get_list(self, key):
@@ -178,16 +177,16 @@ class LevelDBStorage(BaseStorage):
             raise ImportError("leveldb is required to use LevelDB as storage.")
         if 'db' not in config:
             raise ValueError("You must specify LevelDB filename as 'db' in your config")
-        self.storage = leveldb.LevelDB( config['db'])
+        self.storage = leveldb.LevelDB(config['db'])
 
     def keys(self):
         return self.storage.RangeIter(include_value=False)
 
     def set_val(self, key, val):
-        self.storage.Put( key, self.serialize(val))
+        self.storage.Put(key, self.serialize(val))
 
     def get_val(self, key):
-        return self.serialize( self.storage.Get( key))
+        return self.serialize(self.storage.Get(key))
 
     def append_val(self, key, val):
         # If a key doesn't exist, leveldb will throw KeyError
@@ -201,15 +200,15 @@ class LevelDBStorage(BaseStorage):
             # here, we have python3, which has a different manner for
             # interacting with leveldb
             if type(key) == str and sys.version_info[0] == 3:
-                return self.append_val( bytes( key, 'UTF-8'), val)
+                return self.append_val(bytes(key, 'UTF-8'), val)
 
         # update new list
-        current.append( val)
+        current.append(val)
         self.storage.Put(key, self.serialize(current))
 
     def get_list(self, key):
         try:
             k = self.storage.Get(key)
-            return self.deserialize( k)
+            return self.deserialize(k)
         except KeyError:
             return []

@@ -1,13 +1,14 @@
 from __future__ import print_function
 
-import os
 import numpy as np
+import os
 from operator import itemgetter
-from scipy import sparse
-from sklearn.metrics.pairwise import cosine_distances
+from scipy.sparse import csr_matrix, issparse, vstack
 from scipy.spatial.distance import hamming
+from sklearn.metrics.pairwise import cosine_distances
 
 from .storage import storage, serialize, deserialize
+
 
 class LSH(object):
     """ LSH implments locality sensitive hashing using random projection for
@@ -128,20 +129,21 @@ class LSH(object):
         numpy array.
         """
         dense_planes = np.random.randn(self.hash_size, self.input_dim)
-        return sparse.csr_matrix(dense_planes)
+        return csr_matrix(dense_planes)
 
-    def _hash(self, planes, input_points):
+    def _hash(self, input_points, plane_id):
         """ Generates the binary hashes for `input_points` and returns them.
 
-        :param planes:
-            The planes are random uniform planes with a dimension of
-            `hash_size` x `input_dim`.
         :param input_points:
-            A scipy sparse matrix that contains only numbers.
+            A scipy sparse matrix that contains some points (numbers).
             The dimension needs to be N x `input_dim`, N>0.
+        :param plane_id:
+            The plane_id is the ID of one of the random uniform planes with
+            a dimension of `hash_size` x `input_dim` that is going to be used
+            for obtaining hash keys for the input points.
         """
         try:
-            planes = planes.transpose()
+            planes = self.uniform_planes[plane_id].T
             projections = input_points.dot(planes)
             signs = (projections > 0)
 
@@ -162,7 +164,7 @@ class LSH(object):
         input point (a 1 x N sparse matrix).
         """
         # if we get a plain sparse matrix, return it (it's the point itself)
-        if sparse.issparse(serial_or_sparse):
+        if issparse(serial_or_sparse):
             return serial_or_sparse
 
         # here we have a serialized pickle object
@@ -179,7 +181,7 @@ class LSH(object):
             deserial = serial_or_sparse
 
         # if we deserialized it, we might have the sparse now
-        if sparse.issparse(deserial):
+        if issparse(deserial):
             return deserial
 
         if isinstance(deserial[0], tuple):
@@ -195,6 +197,14 @@ class LSH(object):
         else:
             raise TypeError("the input data is not supported")
 
+    def _bytes_string_to_array(self, hash_key):
+        """ Takes a hash key (bytes string) and turn it
+        into a numpy matrix we can do calculations with.
+
+        :param hash_key
+        """
+        return np.array(list(hash_key))
+
     def index(self, input_points, extra_data=None):
         """ Index input points by adding them to the selected storage.
 
@@ -209,39 +219,32 @@ class LSH(object):
             this is a target/class-value of some type.
         """
 
-        assert sparse.issparse(input_points), "input_points needs to be sparse"
+        assert issparse(input_points), "input_points needs to be sparse"
         if input_points.shape[0] != 1:
             assert (extra_data is None) or \
-                (extra_data is not None and
-                 input_points.shape[0] == len(extra_data)), \
+                (isinstance(extra_data, list) and
+                input_points.shape[0] == len(extra_data)), \
                 "input_points dimension needs to match extra data dimension"
 
-        for i, table in enumerate(self.hash_tables):
-            keys = self._hash(self.uniform_planes[i], input_points)
-            # NOTE: there was a bug with 0-equal extra_data
-            # we need to allow blank extra_data if it's provided
-            if extra_data is not None:
-                # NOTE: needs to be tuple so it's set-hashable
+        if extra_data:
+            for i, table in enumerate(self.hash_tables):
+                keys = self._hash(input_points, i)
+                # NOTE: there was a bug with 0-equal extra_data
+                # we need to allow blank extra_data if it's provided
                 for j in range(keys.shape[0]):
-                    # only split up extra_data if our input shape is greater
-                    # than one. in that case we assume extra_data length is
-                    # the same as length of the input points. not doing this
-                    # causes the extra_data to be truncated to a single char
-                    extra = extra_data[j] if input_points.shape[0] > 1 else extra_data
+                    # NOTE: value needs to be tuple so it's set-hashable
+                    extra = extra_data[j]
                     value = (input_points[j], extra)
                     table.append_val(keys[j].tobytes(), value)
-            else:
+        else:
+            for i, table in enumerate(self.hash_tables):
+                keys = self._hash(input_points, i)
+                # NOTE: there was a bug with 0-equal extra_data
+                # we need to allow blank extra_data if it's provided
                 for j in range(keys.shape[0]):
-                    value = (input_points[j],)
+                    # NOTE: value needs to be a tuple so it's set-hashable
+                    value = (input_points[j], None)
                     table.append_val(keys[j].tobytes(), value)
-
-    def _bytes_string_to_array(self, hash_key):
-        """ Takes a hash key (bytes string) and turn it
-        into a numpy matrix we can do calculations with.
-
-        :param hash_key
-        """
-        return np.array(list(hash_key))
 
     def query(self, query_points, num_results=None, distance_func=None,
               dist_threshold=None):
@@ -310,7 +313,7 @@ class LSH(object):
             Specifies the distance threshold below which we accept a match. If not
             specified then any distance is accepted.
         """
-        assert sparse.issparse(query_points), "query_points needs to be sparse"
+        assert issparse(query_points), "query_points needs to be sparse"
 
         if distance_func is None or distance_func == "euclidean":
             d_func = LSH.euclidean_dist_square
@@ -335,34 +338,36 @@ class LSH(object):
             raise ValueError(
                 "The max amount of results %s is invalid." % num_results
             )
-
-        # Create a list of lists of candidate neighbors
+        
         # NOTE: Currently this only does exact matching on hash key, the
         # previous version also got the 2 most simlilar hashes and included
         # the contents of those as well. Not sure if this should actually
         # be done since we can change hash size or add more tables to get
         # better accuracy
-        candidates = []
+
+        # Create a list of lists of candidate neighbors
+        candidates = [list() for j in range(query_points.shape[0])]
+        
         for i, table in enumerate(self.hash_tables):
             # get hashes of query points for the specific plane
-            keys = self._hash(self.uniform_planes[i], query_points)
+            keys = self._hash(query_points, i)
             for j in range(keys.shape[0]):
-                # TODO: go through each hashkey in table and do the following
-                # if the key is more similar to hashkey than hamming dist < 2
+                # TODO: if hamming distance is chosen as the distance_func,
+                # go through each hash key in table and check if
+                # hamming_distance(table_key, point_key) < dist_threshold
 
                 # Create a sublist of candidate neighbors for each query point
-                if len(candidates) <= j:
-                    candidates.append([])
-                new_candidates = table.get_list(keys[j].tobytes())
-                if new_candidates is not None and len(new_candidates) > 0:
-                    candidates[j].extend(new_candidates)
+                candidates[j].extend(table.get_list(keys[j].tobytes()))
 
         # Create a ranked list of lists of candidate neighbors
-        ranked_candidates = []
+        ranked_candidates = [tuple() for j in range(query_points.shape[0])]
 
         # for each query point ...
         # Create a sublist of ranked candidate neighbors for each query point
         for j in range(query_points.shape[0]):
+            if not candidates[j]:
+                continue
+            
             point_results = []
             # hash candidates from above for jth query point
             row_candidates = candidates[j]
@@ -375,11 +380,7 @@ class LSH(object):
                 if len(row) == 2:
                     extra_datas.append(row[1])
 
-            if not cands:
-                ranked_candidates.append(point_results)
-                continue
-
-            cand_csr = sparse.vstack(cands)
+            cand_csr = vstack(cands)
             distances = d_func(query_points[j], cand_csr)
             if dist_threshold is not None:
                 accepted = np.unique(np.where(distances < dist_threshold)[0])
@@ -434,7 +435,7 @@ class LSH(object):
     @staticmethod
     def euclidean_dist(x, Y):
         # repeat x as many times as the number of rows in Y
-        xx = sparse.csr_matrix(np.ones([Y.shape[0], 1]) * x)
+        xx = csr_matrix(np.ones([Y.shape[0], 1]) * x)
         diff = Y - xx
         dists = np.sqrt(diff.dot(diff.T).diagonal()).reshape((1,-1))
         return dists[0]
@@ -442,7 +443,7 @@ class LSH(object):
     @staticmethod
     def euclidean_dist_square(x, Y):
         # repeat x as many times as the number of rows in Y
-        xx = sparse.csr_matrix(np.ones([Y.shape[0], 1]) * x)
+        xx = csr_matrix(np.ones([Y.shape[0], 1]) * x)
         diff = Y - xx
         if diff.nnz == 0:
             dists = np.zeros((1, Y.shape[0]))
@@ -456,8 +457,8 @@ class LSH(object):
     @staticmethod
     def l1norm_dist(x, Y):
         # repeat x as many times as the number of rows in Y
-        xx = sparse.csr_matrix(np.ones([Y.shape[0], 1]) * x)
-        dists = np.asarray(abs(Y - xx).sum(axis=1).reshape((1,-1)))
+        xx = csr_matrix(np.ones([Y.shape[0], 1]) * x)
+        dists = np.abs(Y - xx).sum(axis=1).getA().T
         return dists[0]
 
     @staticmethod

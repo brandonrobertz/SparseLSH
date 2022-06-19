@@ -212,8 +212,8 @@ class LSH(object):
         assert sparse.issparse(input_points), "input_points needs to be sparse"
         if input_points.shape[0] != 1:
             assert (extra_data is None) or \
-                (extra_data is not None and \
-                input_points.shape[0] == len(extra_data)), \
+                (extra_data is not None and
+                 input_points.shape[0] == len(extra_data)), \
                 "input_points dimension needs to match extra data dimension"
 
         for i, table in enumerate(self.hash_tables):
@@ -243,7 +243,8 @@ class LSH(object):
         """
         return np.array(list(hash_key))
 
-    def query(self, query_points, num_results=None, distance_func=None, dist_threshold=None):
+    def query(self, query_points, num_results=None, distance_func=None,
+              dist_threshold=None):
         """ Takes `query_points` which is a sparse CSR matrix of N x `input_dim`,
         returns `num_results` of results as a list of tuples that are ranked
         based on the supplied metric function `distance_func`. The exact return
@@ -267,7 +268,6 @@ class LSH(object):
                 )
             ]
             ```
-
 
         Example query return with 2 query_points:
 
@@ -360,101 +360,67 @@ class LSH(object):
         # Create a ranked list of lists of candidate neighbors
         ranked_candidates = []
 
-        # If a distance threshold is requested
-        if dist_threshold is not None:
-            for j in range(query_points.shape[0]):
+        # for each query point ...
+        # Create a sublist of ranked candidate neighbors for each query point
+        for j in range(query_points.shape[0]):
+            point_results = []
+            # hash candidates from above for jth query point
+            row_candidates = candidates[j]
 
-                # Create a sublist of ranked candidate neighbors for each query point
-                if len(candidates[j]) > 0:
-                    # Transofrm candidates (without extra_info) into a sparse matrix
-                    cand = tuple(zip(*candidates[j]))[0]
-                    cand_csr = sparse.vstack(cand)
-                    distances = d_func(query_points[j], cand_csr)
-                    accepted = np.unique(np.where(distances < dist_threshold)[0])
-                    # Check if any acceptable candidates w.r.t. dist_threshold
-                    if accepted.size > 0:
-                        neighbors = cand_csr[accepted,:]
-                        dists = distances[accepted]
-                        # Rank candidates by distance function
-                        indices = np.argsort(dists)
-                        neighbors_sorted = neighbors[indices]
-                        dists_sorted = dists[indices]
-                        # if we have extra data
-                        if len(candidates[j][0]) == 2:
-                            # Sort extra_data by ranked distances
-                            extra_data_sorted = itemgetter(*list(indices))(list(zip(*candidates[j]))[1])
-                            ranked_candidates.append((neighbors_sorted, extra_data_sorted, dists_sorted))
-                        else:
-                            ranked_candidates.append((neighbors_sorted, dists_sorted))
-                else:
-                    ranked_candidates.append(tuple())
+            # Remove extra info from candidates to convert them into a matrix
+            cands = []
+            extra_datas = []
+            for row in row_candidates:
+                cands.append(row[0])
+                if len(row) == 2:
+                    extra_datas.append(row[1])
 
-        else:
-
-            # for each query point ...
-            # Create a sublist of ranked candidate neighbors for each query point
-            for j in range(query_points.shape[0]):
-                point_results = []
-                # hash candidates from above for jth query point
-                row_candidates = candidates[j]
-                # print("row_candidates", row_candidates)
-
-                # Remove extra info from candidates to convert them into a matrix
-                cands = []
-                extra_datas = []
-                for row in row_candidates:
-                    # print("row", row)
-                    cands.append(row[0])
-                    if len(row) == 2:
-                        extra_datas.append(row[1])
-
-                if not cands:
-                    ranked_candidates.append(point_results)
-                    continue
-
-                # print("cands:", cands, "extra_datas:", extra_datas)
-                cand_csr = sparse.vstack(cands)
-                distances = d_func(query_points[j], cand_csr)
-
-                # Rank candidates by distance function
-                indices = np.argsort(np.array(distances))
-                neighbors_sorted = cand_csr[indices]
-                dists_sorted = distances[indices]
-
-                # if we have extra data
-                if extra_datas:
-                    # Sort extra_data by ranked distances
-                    extra_data_sorted = itemgetter(*list(indices))(extra_datas)
-
-                    for ix, (neigh, ext) in enumerate(zip(neighbors_sorted, extra_data_sorted)):
-                        if num_results is not None and ix >= num_results:
-                            break
-                        dist = dists_sorted[ix]
-                        point_results.append(((neigh, ext), dist))
-
-                else:
-                    for ix, neigh in enumerate(neighbors_sorted):
-                        if num_results is not None and ix >= num_results:
-                            break
-                        dist = dists_sorted[ix]
-                        point_results.append(((neigh,), dist))
-
+            if not cands:
                 ranked_candidates.append(point_results)
+                continue
 
+            cand_csr = sparse.vstack(cands)
+            distances = d_func(query_points[j], cand_csr)
+            if dist_threshold is not None:
+                accepted = np.unique(np.where(distances < dist_threshold)[0])
+                cand_csr = cand_csr[accepted, :]
+                distances = distances[accepted]
 
-        # if num_results is not None:
-        #     print("Returning", num_results, "results", len(ranked_candidates[:num_results]))
-        #     return ranked_candidates[:num_results]
+            # Rank candidates by distance function, this has to
+            # support having empty cand_csr and distances
+            indices = np.argsort(np.array(distances))
+            neighbors_sorted = cand_csr[indices]
+            dists_sorted = distances[indices]
 
-        # if num_results is not None:
-        #     for j in range(len(ranked_candidates)):
-        #         ranked_candidates[j] = ranked_candidates[j][:num_results]
+            # if we have extra data
+            if extra_datas:
+                # Sort extra_data by ranked distances
+                try:
+                    extra_data_sorted = itemgetter(*list(indices))(extra_datas)
+                # we have no results, so no extra_datas
+                except TypeError:
+                    extra_data_sorted = []
+
+                neigh_extra_tuples = zip(neighbors_sorted, extra_data_sorted)
+                for ix, (neigh, ext) in enumerate(neigh_extra_tuples):
+                    if num_results is not None and ix >= num_results:
+                        break
+                    dist = dists_sorted[ix]
+                    point_results.append(((neigh, ext), dist))
+
+            else:
+                for ix, neigh in enumerate(neighbors_sorted):
+                    if num_results is not None and ix >= num_results:
+                        break
+                    dist = dists_sorted[ix]
+                    point_results.append(((neigh,), dist))
+
+            ranked_candidates.append(point_results)
 
         if query_points.shape[0] == 1:
             # Backwards compat fix
             return ranked_candidates[0]
 
-        print("Returning", num_results, ranked_candidates)
         return ranked_candidates
 
     ### distance functions

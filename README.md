@@ -41,17 +41,16 @@ To install (minimal install):
 
     python setup.py install
 
-If you would like to use the LevelDB or Redis
-storage backends, you can install the dependencies
-from the `optional-requirements.txt`:
+If you would like to use the LevelDB or Redis storage backends, you can
+install the dependencies from the `optional-requirements.txt`:
 
     pip install -r optional-requirements.txt
 
 ## Quickstart
 
-You can quickly test LSH using the bundled `lsh_cluster.py` script, found in `examples/` directory. Simply pass the path to a file containing records to be clustered, one per line, and the script will output groups of similar items.
+You can quickly use LSH using the bundled `sparselsh` command line utility. Simply pass the path to a file containing records to be clustered, one per line, and the script will output groups of similar items.
 
-    ./examples/lsh_cluster.py path/to/recordsfile.txt
+    sparselsh path/to/recordsfile.txt
 
 To create 4-bit hashes for input data of 7 dimensions:
 

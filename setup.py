@@ -22,6 +22,14 @@ setuptools.setup(
         'scipy>=1.4.1,<2.0',
         'scikit-learn>=0.20,<1.0'
     ],
+    extras_require={
+        "test": ["pytest"],
+        "redis": ["redis>=2.10.1,<3.0"]
+    },
+    entry_points="""
+        [console_scripts]
+        csvs-to-sqlite=csvs_to_sqlite.cli:cli
+    """,
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',

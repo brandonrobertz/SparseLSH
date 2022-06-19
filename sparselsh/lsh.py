@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import hashlib
 import numpy as np
 import os
 from operator import itemgetter
@@ -205,6 +206,22 @@ class LSH(object):
         """
         return np.array(list(hash_key))
 
+    def _get_points_digests(self, points, func='sha1'):
+        """ Creates digests / checksums of the input points
+        using the provided provided hash algorithm.
+        """
+        if func == 'md5':
+            digests = tuple([hashlib.md5(points[i].toarray()).digest() for i in range(points.shape[0])])
+        elif func == 'sha1':
+            digests = tuple([hashlib.sha1(points[i].toarray()).digest() for i in range(points.shape[0])])
+        elif func == 'sha256':
+            digests = tuple([hashlib.sha256(points[i].toarray()).digest() for i in range(points.shape[0])])
+        elif func == 'sha512':
+            digests = tuple([hashlib.sha512(points[i].toarray()).digest() for i in range(points.shape[0])])
+        else:
+            digests = tuple()
+        return digests
+
     def index(self, input_points, extra_data=None):
         """ Index input points by adding them to the selected storage.
 
@@ -362,65 +379,55 @@ class LSH(object):
         # Create a ranked list of lists of candidate neighbors
         ranked_candidates = [tuple() for j in range(query_points.shape[0])]
 
-        # for each query point ...
-        # Create a sublist of ranked candidate neighbors for each query point
-        for j in range(query_points.shape[0]):
-            if not candidates[j]:
-                continue
-            
-            point_results = []
-            # hash candidates from above for jth query point
-            row_candidates = candidates[j]
+        # If a distance threshold is requested
+        if dist_threshold is not None:
+            for j in range(query_points.shape[0]):
+                # Create a sublist of ranked candidate neighbors for each query point
+                if candidates[j]:
+                    # Transofrm candidate neighbors (without extra_info) into a sparse matrix
+                    csr = vstack(tuple(zip(*candidates[j]))[0])
+                    # Calculate distance between the query point and all of its candidate neighbors
+                    distances = d_func(query_points[j], csr)
+                    # Apply the distance threshold
+                    accepted = np.where(distances < dist_threshold)[0]
+                    # Check if any acceptable candidate neighbors w.r.t. dist_threshold
+                    if accepted.size > 0:
+                        # Get indices of unique neighbors
+                        _, unique_idx = np.unique(self._get_points_digests(csr[accepted]), return_index=True)
+                        # Rank unique neighbors by distance function
+                        sorted_idx = np.argsort(distances[accepted[unique_idx]])
+                        # Extract unique neighbors' data
+                        idx = accepted[unique_idx[sorted_idx]]
+                        neighbors_sorted = csr[idx]
+                        dists_sorted = distances[idx]
+                        extra_data_sorted = itemgetter(*list(idx))(list(zip(*candidates[j]))[1])
+                        # Add data to list
+                        ranked_candidates[j] = tuple((neighbors_sorted, dists_sorted, extra_data_sorted))
+        else:
+            for j in range(query_points.shape[0]):
+                # Create a sublist of ranked candidate neighbors for each query point
+                if candidates[j]:
+                    # Transofrm candidate neighbors (without extra_info) into a sparse matrix
+                    csr = vstack(tuple(zip(*candidates[j]))[0])
+                    # Get indices of unique neighbors
+                    _, unique_idx = np.unique(self._get_points_digests(csr), return_index=True)
+                    # Calculate distance between the query point and all of its candidate neighbors
+                    distances = d_func(query_points[j], csr[unique_idx])
+                    # Rank candidate neighbors by distance function
+                    sorted_idx = np.argsort(distances)
+                    # Extract candidate neighbors' data
+                    idx = unique_idx[sorted_idx]
+                    neighbors_sorted = csr[idx]
+                    dists_sorted = distances[sorted_idx]
+                    extra_data_sorted = itemgetter(*list(idx))(list(zip(*candidates[j]))[1])
+                    # Add data to list
+                    ranked_candidates[j] = tuple((neighbors_sorted, dists_sorted, extra_data_sorted))
 
-            # Remove extra info from candidates to convert them into a matrix
-            cands = []
-            extra_datas = []
-            for row in row_candidates:
-                cands.append(row[0])
-                if len(row) == 2:
-                    extra_datas.append(row[1])
-
-            cand_csr = vstack(cands)
-            distances = d_func(query_points[j], cand_csr)
-            if dist_threshold is not None:
-                accepted = np.unique(np.where(distances < dist_threshold)[0])
-                cand_csr = cand_csr[accepted, :]
-                distances = distances[accepted]
-
-            # Rank candidates by distance function, this has to
-            # support having empty cand_csr and distances
-            indices = np.argsort(np.array(distances))
-            neighbors_sorted = cand_csr[indices]
-            dists_sorted = distances[indices]
-
-            # if we have extra data
-            if extra_datas:
-                # Sort extra_data by ranked distances
-                try:
-                    extra_data_sorted = itemgetter(*list(indices))(extra_datas)
-                # we have no results, so no extra_datas
-                except TypeError:
-                    extra_data_sorted = []
-
-                neigh_extra_tuples = zip(neighbors_sorted, extra_data_sorted)
-                for ix, (neigh, ext) in enumerate(neigh_extra_tuples):
-                    if num_results is not None and ix >= num_results:
-                        break
-                    dist = dists_sorted[ix]
-                    point_results.append(((neigh, ext), dist))
-
-            else:
-                for ix, neigh in enumerate(neighbors_sorted):
-                    if num_results is not None and ix >= num_results:
-                        break
-                    dist = dists_sorted[ix]
-                    point_results.append(((neigh,), dist))
-
-            ranked_candidates.append(point_results)
-
-        if query_points.shape[0] == 1:
-            # Backwards compat fix
-            return ranked_candidates[0]
+        if num_results:
+            for j in range(len(ranked_candidates)):
+                if ranked_candidates[j]:
+                    lim = min(ranked_candidates[j][0].shape[0], num_results)
+                    ranked_candidates[j] = tuple((ranked_candidates[j][0][:lim], ranked_candidates[j][1][:lim]))
 
         return ranked_candidates
 

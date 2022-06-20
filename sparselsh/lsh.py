@@ -420,18 +420,18 @@ class LSH(object):
                     except TypeError:
                         ranked_candidates[j] = [tuple((tuple((neighbors_sorted, extra_data_sorted)), dists_sorted))]
 
-            if query_points.shape[0] == 1:
-                if num_results is not None:
-                    lim = min(len(ranked_candidates[0]), num_results)
-                    ranked_candidates = ranked_candidates[0][:lim]
-                else:
-                    ranked_candidates = ranked_candidates[0]
+        if query_points.shape[0] == 1:
+            if num_results is not None:
+                lim = min(len(ranked_candidates[0]), num_results)
+                ranked_candidates = ranked_candidates[0][:lim]
             else:
-                if num_results is not None:
-                    for j in range(len(ranked_candidates)):
-                        if ranked_candidates[j]:
-                            lim = min(len(ranked_candidates[j]), num_results)
-                            ranked_candidates[j] = ranked_candidates[j][:lim]
+                ranked_candidates = ranked_candidates[0]
+        else:
+            if num_results is not None:
+                for j in range(len(ranked_candidates)):
+                    if ranked_candidates[j]:
+                        lim = min(len(ranked_candidates[j]), num_results)
+                        ranked_candidates[j] = ranked_candidates[j][:lim]
 
         return ranked_candidates
 

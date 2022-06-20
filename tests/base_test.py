@@ -1,5 +1,5 @@
-import numpy as np
 from scipy.sparse import csr_matrix, issparse
+import numpy as np
 
 
 class LSHTestBase(object):
@@ -37,11 +37,11 @@ class LSHTestBase(object):
     def assertSparseEqual(self, val1, val2, *args):
         assert issparse(val1) and issparse(val2), \
                 f"Inputs aren't sparse: val1: {val1} val2: {val2}"
-        return self.assertArrayEqual(
-            val1.todense(), val2.todense(), *args
-        )
+        return (val1 != val2).nnz == 0
 
     def assertArrayEqual(self, val1, val2, *args):
+        assert type(val1) is np.ndarray and type(val2) is np.ndarray, \
+                f"Inputs aren't arrays: val1: {val1} val2: {val2}"
         eq = val1 == val2
         # import IPython; IPython.embed(); import time; time.sleep(2)
         msg = None

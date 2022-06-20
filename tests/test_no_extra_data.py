@@ -1,8 +1,8 @@
 import unittest
 
-import numpy as np
 from sparselsh import LSH
 from scipy.sparse import csr_matrix, issparse
+import numpy as np
 
 from tests.base_test import LSHTestBase
 
@@ -20,7 +20,10 @@ class NoExtraDataTestCase(unittest.TestCase, LSHTestBase):
         ])
 
         # I've changed the last 1 to a 0
-        X_sim = csr_matrix([[1, 1, 1, 1, 1, 1, 0], [1, 1, 1, 1, 1, 1, 0]])
+        X_sim = csr_matrix([
+            [1, 1, 1, 1, 1, 1, 0],
+            [1, 1, 1, 1, 1, 1, 0]
+        ])
 
         num_hashtables = 2
         lsh_args = (4, X.shape[1])
@@ -61,7 +64,7 @@ class NoExtraDataTestCase(unittest.TestCase, LSHTestBase):
 
         s_point, similarity = first_point_result[0]
         self.assertEqual(
-            len(s_point), 1,
+            len(s_point), 2,
             "Result tuple length should only have one item"
         )
         point = s_point[0]
@@ -77,7 +80,10 @@ class NoExtraDataTestCase(unittest.TestCase, LSHTestBase):
         ])
 
         # I've changed the last 1 to a 0
-        X_sim = csr_matrix([[1, 1, 1, 1, 1, 1, 0], [1, 1, 1, 1, 1, 0, 0]])
+        X_sim = csr_matrix([
+            [1, 1, 1, 1, 1, 1, 0],
+            [1, 1, 1, 1, 1, 0, 0]
+        ])
 
         lsh_args = (4, X.shape[1])
         lsh_kwargs = dict(

@@ -121,7 +121,10 @@ class MatrixIndexTestCase(unittest.TestCase, LSHTestBase):
         y = ["one", "two", "three"]
 
         # I've changed the last 1 to a 0
-        X_sim = csr_matrix([[1, 1, 1, 1, 1, 1, 0], [1, 1, 1, 1, 1, 0, 0]])
+        X_sim = csr_matrix([
+            [1, 1, 1, 1, 1, 1, 0],
+            [1, 1, 1, 1, 1, 0, 0]
+        ])
 
         lsh_args = (4, X.shape[1])
         lsh_kwargs = dict(
@@ -157,9 +160,6 @@ class MatrixIndexTestCase(unittest.TestCase, LSHTestBase):
             len(results_none[0]), 0,
             "Incorrect number of results for dist_threshold near zero"
         )
-
-
-
 
 
 if __name__ == '__main__':

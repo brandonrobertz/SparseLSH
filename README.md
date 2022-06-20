@@ -174,12 +174,13 @@ Parameters:
 
 Parameters:
 
-    input_point:
-        The input data point is an array or tuple of numbers of input_dim.
+    input_points:
+        A sparse CSR matrix with the points to be indexed.
 
     extra_data = None:
-        (optional) Extra data to be added along with the input_point.
-        This can be used to hold values like class labels, URIs, titles, etc.
+        (optional) A list of values to associate with the points. Commonly
+        this is a target/class-value of some type. This can be used to store
+        values like class labels, URIs, titles, etc
 
 This function returns nothing.
 
@@ -187,26 +188,32 @@ This function returns nothing.
 
 To query a data point against a given `LSH` instance:
 
-    lsh.query(query_point, num_results=None, distance_func="euclidean")
+    lsh.query(query_points, num_results=None, distance_func="euclidean", dist_threshold=None, remove_duplicates=False)
 
 Parameters:
 
-    query_point:
-        The query data point is a sparse CSR matrix.
+    query_points:
+        A sparse CSR matrix with the points to be queried.
 
     num_results = None:
         (optional) Integer, specifies the max amount of results to be
         returned. If not specified all candidates will be returned as a
         list in ranked order.
-        NOTE: You do not save processing by limiting the results. Currently,
-        a similarity ranking and sort is done on all items in the hashtable
-        regardless if this parameter.
 
     distance_func = "euclidean":
-        (optional) Distance function to use to rank the candidates. By default
-        euclidean distance function will be used.
+        The distance function to be used. Currently it needs to be one
+        of ("hamming", "euclidean", "true_euclidean", "cosine", "l1norm").
+        By default "euclidean" will used.
+
+    dist_threshold = None:
+        (optional) Its type and value depend on the chosen distance function.
+        Specifies the distance threshold below which we accept a match. If not
+        specified then any distance is accepted.
+            
+    remove_duplicates = False:
+        Boolean, set its value to true if you want to remove duplicate
+        neighbors from queries' results. Default value is False.
 
 Returns a list of tuples, each of which has the original input point (which
 will be a tuple of csr-matrix, extra_data or just the csr-matrix if no extra
 data was supplied) and a similarity score.
-

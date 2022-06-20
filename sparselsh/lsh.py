@@ -234,10 +234,12 @@ class LSH(object):
         hash table.
 
         :param input_points:
-            A sparse CSR matrix. The dimension needs to be N x `input_dim`, N>0.
+            A sparse CSR matrix with the points to be indexed. The dimension
+            needs to be N x `input_dim`, N>0.
         :param extra_data:
             (optional) A list of values to associate with the points. Commonly
-            this is a target/class-value of some type.
+            this is a target/class-value of some type. This can be used to store
+            values like class labels, URIs, titles, etc
         """
 
         assert issparse(input_points), "input_points needs to be a sparse matrix"
@@ -315,23 +317,25 @@ class LSH(object):
             ```
 
         :param query_points:
-            A sparse CSR matrix. The dimension needs to be N x `input_dim`, N>0.
-            Used by :meth:`._hash`.
+            A sparse CSR matrix with the points to be queried. The dimension
+            needs to be N x `input_dim`, N>0. Used by :meth:`._hash`.
         :param num_results:
             (optional) Integer, specifies the max amount of results to be
             returned. If not specified all candidates will be returned as a
             list in ranked order.
-            NOTE: You do not save processing by limiting the results. Currently,
+            NOTE: No resources are saved by limiting the results. Currently,
             a similarity ranking and sort is done on all items in the hashtable.
         :param distance_func:
-            (optional) The distance function to be used. Currently it needs to
-            be one of ("hamming", "euclidean", "true_euclidean",
-            "cosine", "l1norm"). By default "euclidean"
-            will used.
+            (optional) The distance function to be used. Currently it needs to be
+            one of ("hamming", "euclidean", "true_euclidean", "cosine", "l1norm").
+            By default "euclidean" will used.
         :param dist_threshold:
             (optional) Its type and value depend on the chosen distance function.
             Specifies the distance threshold below which we accept a match. If not
             specified then any distance is accepted.
+        :param remove_duplicates:
+            Boolean, set its value to true if you want to remove duplicate
+            neighbors from queries' results. Default value is False.
         """
         assert issparse(query_points), "query_points needs to be sparse"
         assert query_points.shape[0] > 0, "query_points needs to be non-empty"

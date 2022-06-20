@@ -59,7 +59,6 @@ class LSH(object):
 
     def __init__(self, hash_size, input_dim, num_hashtables=1,
                  storage_config=None, matrices_filename=None, overwrite=False):
-
         assert isinstance(hash_size, int) and hash_size > 0, "hash_size must be a positive integer"
         assert isinstance(input_dim, int) and input_dim > 0, "input_dim must be a positive integer"
         assert isinstance(num_hashtables, int) and num_hashtables > 0, "num_hashtables must be a positive integer"
@@ -92,7 +91,6 @@ class LSH(object):
         if file `self.matrices_filename` does not exist and regardless of
         `self.overwrite`, only set `self.uniform_planes`.
         """
-
         if "uniform_planes" in self.__dict__:
             return
 
@@ -124,8 +122,8 @@ class LSH(object):
 
     def _init_hashtables(self):
         """ Initialize the hash tables such that each record will be in the
-        form of "[storage1, storage2, ...]" """
-
+        form of [storage1, storage2, ...]
+        """
         self.hash_tables = [storage(self.storage_config, i)
                             for i in range(self.num_hashtables)]
 
@@ -365,7 +363,7 @@ class LSH(object):
             raise ValueError(
                 "The max amount of results %s is invalid." % num_results
             )
-        
+
         # NOTE: Currently this only does exact matching on hash key, the
         # previous version also got the 2 most simlilar hashes and included
         # the contents of those as well. Not sure if this should actually
@@ -425,15 +423,14 @@ class LSH(object):
                         ranked_candidates[j] = [tuple((tuple((neighbors_sorted, extra_data_sorted)), dists_sorted))]
 
         if query_points.shape[0] == 1:
-            if num_results is not None:
-                lim = min(len(ranked_candidates[0]), num_results)
-                ranked_candidates = ranked_candidates[0][:lim]
-            else:
-                ranked_candidates = ranked_candidates[0]
+            ranked_candidates = ranked_candidates[0]
+            if num_results is not None and len(ranked_candidates) > 1:
+                lim = min(len(ranked_candidates), num_results)
+                ranked_candidates = ranked_candidates[:lim]
         else:
             if num_results is not None:
                 for j in range(len(ranked_candidates)):
-                    if ranked_candidates[j]:
+                    if len(ranked_candidates[j]) > 1:
                         lim = min(len(ranked_candidates[j]), num_results)
                         ranked_candidates[j] = ranked_candidates[j][:lim]
 

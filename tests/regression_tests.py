@@ -37,7 +37,7 @@ class IndexThenQueryTestCase(unittest.TestCase):
         )
         for dist in distance_functions:
             points = lsh.query(X_sim, num_results=1, distance_func=dist)
-        print(points[0][0][0])
+
         self.assertEqual(type(points[0][0][0]), csr_matrix)
         truth = points[0][0][0].todense() == X_sim.todense()
         self.assertTrue(truth.all())

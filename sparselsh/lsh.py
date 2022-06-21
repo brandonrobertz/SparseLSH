@@ -4,7 +4,6 @@ from operator import itemgetter
 from scipy.sparse import csr_matrix, issparse, vstack
 from scipy.spatial.distance import hamming
 from sklearn.metrics.pairwise import cosine_distances
-import hashlib
 import numpy as np
 import os
 
@@ -12,14 +11,14 @@ from .storage import storage, serialize, deserialize
 
 
 class LSH(object):
-    """ LSH implments locality sensitive hashing using random projection for
-    input vectors of dimension `input_dim`.
+    """ LSH implments locality sensitive hashing using random projection
+    for input vectors of dimension `input_dim`.
 
     Attributes:
 
     :param hash_size:
-        The length of the resulting binary hash in integer. E.g., 32 means the
-        resulting binary hash will be 32-bit long.
+        The length of the resulting binary hash in integer. E.g., 32 means
+        the resulting binary hash will be 32-bit long.
     :param input_dim:
         The dimension of the input vector. This can be found in your sparse
         matrix by checking the .shape attribute of your matrix. I.E.,
@@ -38,7 +37,7 @@ class LSH(object):
             {"dict": None} # Takes no options
         `Redis`:
             `{"redis": {"host": hostname, "port": port_num}}`
-            Where `hostname` is normally `localhost` and `port` is normally 6379.
+            where `hostname` is normally `localhost` and `port` is normally 6379.
         `LevelDB`:
             {'leveldb':{'db': 'ldb'}}
             Where 'db' specifies the directory to store the LevelDB database.
@@ -59,9 +58,12 @@ class LSH(object):
 
     def __init__(self, hash_size, input_dim, num_hashtables=1,
                  storage_config=None, matrices_filename=None, overwrite=False):
-        assert isinstance(hash_size, int) and hash_size > 0, "hash_size must be a positive integer"
-        assert isinstance(input_dim, int) and input_dim > 0, "input_dim must be a positive integer"
-        assert isinstance(num_hashtables, int) and num_hashtables > 0, "num_hashtables must be a positive integer"
+        assert isinstance(hash_size, int) and hash_size > 0, \
+            "hash_size must be a positive integer"
+        assert isinstance(input_dim, int) and input_dim > 0, \
+            "input_dim must be a positive integer"
+        assert isinstance(num_hashtables, int) and num_hashtables > 0, \
+            "num_hashtables must be a positive integer"
         
         self.hash_size = hash_size
         self.input_dim = input_dim
@@ -208,22 +210,6 @@ class LSH(object):
         """
         return np.array(list(hash_key))
 
-    def _get_points_digests(self, points, func='sha1'):
-        """ Creates digests / checksums of the input points
-        using the provided provided hash algorithm.
-        """
-        if func == 'md5':
-            digests = tuple([hashlib.md5(points[i].toarray()).digest() for i in range(points.shape[0])])
-        elif func == 'sha1':
-            digests = tuple([hashlib.sha1(points[i].toarray()).digest() for i in range(points.shape[0])])
-        elif func == 'sha256':
-            digests = tuple([hashlib.sha256(points[i].toarray()).digest() for i in range(points.shape[0])])
-        elif func == 'sha512':
-            digests = tuple([hashlib.sha512(points[i].toarray()).digest() for i in range(points.shape[0])])
-        else:
-            digests = tuple()
-        return digests
-
     def index(self, input_points, extra_data=None):
         """ Index input points by adding them to the selected storage.
 
@@ -262,7 +248,8 @@ class LSH(object):
                 # we need to allow blank extra_data if it's provided
                 for j in range(keys.shape[0]):
                     # NOTE: value needs to be tuple so it's set-hashable
-                    value = (input_points[j], extra_data[j] if extra_data is not None else None)
+                    value = (input_points[j], extra_data[j] \
+                             if extra_data is not None else None)
                     table.append_val(keys[j].tobytes(), value)
 
 
@@ -338,7 +325,8 @@ class LSH(object):
         assert issparse(query_points), "query_points needs to be sparse"
         assert query_points.shape[0] > 0, "query_points needs to be non-empty"
         assert query_points.shape[1] == self.input_dim, "query_points wrong 2nd dimension"
-        assert num_results is None or (isinstance(num_results, int) and num_results > 0), "num_results must be a positive integer"
+        assert num_results is None or (isinstance(num_results, int) and num_results > 0), \
+            "num_results must be a positive integer"
 
         if distance_func is None or distance_func == "euclidean":
             d_func = LSH.euclidean_dist_square
@@ -402,8 +390,13 @@ class LSH(object):
                 # Check if any acceptable candidate neighbors w.r.t. dist_threshold
                 if accepted.size > 0:
                     if remove_duplicates:
-                        # Get indices of unique acceptable neighbors
-                        _, unique_idx = np.unique(self._get_points_digests(csr[accepted]), return_index=True)
+                        # Find indices of unique acceptable neighbors
+                        ids = np.zeros(csr[accepted].shape[0])
+                        for k in range(csr[accepted].shape[0]):
+                            if 0 not in [(csr[accepted][k] != csr[accepted][q]).nnz \
+                                         for q in np.nonzero(ids)[0]]:
+                                ids[k] = 1
+                        unique_idx = np.nonzero(ids)[0]
                         # Rank unique acceptable neighbors by distance function
                         sorted_idx = np.argsort(distances[accepted[unique_idx]])
                         # Extract unique acceptable neighbors' data
@@ -418,9 +411,14 @@ class LSH(object):
                     extra_data_sorted = itemgetter(*list(idx))(list(zip(*candidates[j]))[1])
                     # Add data to list
                     try:
-                        ranked_candidates[j] = [tuple((tuple((neighbors_sorted[k], extra_data_sorted[k])), dists_sorted[k])) for k in range(idx.size)]
+                        ranked_candidates[j] = [
+                            tuple((tuple((neighbors_sorted[k], extra_data_sorted[k])), dists_sorted[k])) \
+                            for k in range(idx.size)
+                        ]
                     except TypeError:
-                        ranked_candidates[j] = [tuple((tuple((neighbors_sorted, extra_data_sorted)), dists_sorted))]
+                        ranked_candidates[j] = [
+                            tuple((tuple((neighbors_sorted, extra_data_sorted)), dists_sorted))
+                        ]
 
         if query_points.shape[0] == 1:
             ranked_candidates = ranked_candidates[0]

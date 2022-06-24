@@ -18,9 +18,9 @@ setuptools.setup(
     keywords=['clustering', 'sparse', 'lsh'],
     packages=setuptools.find_packages(),
     install_requires=[
-        'numpy>=1.18.5,<2.0',
-        'scipy>=1.4.1,<2.0',
-        'scikit-learn>=0.20,<1.0'
+        'numpy>=1.18.6,<2.0',
+        'scipy>=1.0.0,<2.0',
+        'scikit-learn>=0.24.0,<2.0'
     ],
     extras_require={
         "test": ["pytest"],
@@ -35,7 +35,6 @@ setuptools.setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
         'Topic :: Software Development :: Libraries',
         ],

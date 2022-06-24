@@ -18,7 +18,7 @@ setuptools.setup(
     keywords=['clustering', 'sparse', 'lsh'],
     packages=setuptools.find_packages(),
     install_requires=[
-        'numpy>=1.18.4,<2.0',
+        'numpy>=1.18.5,<2.0',
         'scipy>=1.4.1,<2.0',
         'scikit-learn>=0.20,<1.0'
     ],

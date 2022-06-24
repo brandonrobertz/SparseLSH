@@ -73,7 +73,14 @@ To create 4-bit hashes for input data of 7 dimensions:
         storage_config={"dict":None}
     )
 
-    lsh.index(X, extra_data=y)
+    # If you're using >= v2.1.0, this is much faster
+    # lsh.index(X, extra_data=y)
+
+    # For all versions
+    for ix in range(X.shape[0]):
+        x = X.getrow(ix)
+        c = y[ix]
+        lsh.index( x, extra_data=c)
 
     # Build a 1-D (single row) sparse matrix
     X_sim = csr_matrix([[1, 1, 1, 1, 1, 1, 0]])

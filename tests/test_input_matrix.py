@@ -19,7 +19,8 @@ class MatrixIndexTestCase(unittest.TestCase, LSHTestBase):
         X = csr_matrix([
             [3, 0, 0, 0, 0, 0, -1],
             [0, 1, 0, 0, 0, 0,  1],
-            [1, 1, 1, 1, 1, 1,  1]])
+            [1, 1, 1, 1, 1, 1,  1]
+        ])
 
         # One class number for each input point
         y = ["one", "two", "three"]
@@ -121,7 +122,10 @@ class MatrixIndexTestCase(unittest.TestCase, LSHTestBase):
         y = ["one", "two", "three"]
 
         # I've changed the last 1 to a 0
-        X_sim = csr_matrix([[1, 1, 1, 1, 1, 1, 0], [1, 1, 1, 1, 1, 0, 0]])
+        X_sim = csr_matrix([
+            [1, 1, 1, 1, 1, 1, 0],
+            [1, 1, 1, 1, 1, 0, 0]
+        ])
 
         lsh_args = (4, X.shape[1])
         lsh_kwargs = dict(
@@ -134,32 +138,29 @@ class MatrixIndexTestCase(unittest.TestCase, LSHTestBase):
         self.load_planes(lsh)
         lsh.index(X, extra_data=y)
 
-        results_all = lsh.query(X_sim, dist_threshold=1.0,
-                                distance_func="cosine")
+        results_all = lsh.query(X_sim, distance_func="cosine",
+                                dist_threshold=1.0)
         print("results_all", results_all)
         self.assertEqual(
             len(results_all[0]), X.shape[0],
             "Incorrect number of results for dist_threshold < 1.0"
         )
 
-        results_some = lsh.query(X_sim, dist_threshold=0.5,
-                                 distance_func="cosine")
+        results_some = lsh.query(X_sim, distance_func="cosine",
+                                 dist_threshold=0.5)
         print("results_some", results_some)
         self.assertEqual(
             len(results_some[0]), 2,
             "Incorrect number of results for dist_threshold < 0.5"
         )
 
-        results_none = lsh.query(X_sim, dist_threshold=0.00001,
-                                 distance_func="cosine")
+        results_none = lsh.query(X_sim, distance_func="cosine",
+                                 dist_threshold=0.00001)
         print("results_none", results_none)
         self.assertEqual(
             len(results_none[0]), 0,
             "Incorrect number of results for dist_threshold near zero"
         )
-
-
-
 
 
 if __name__ == '__main__':

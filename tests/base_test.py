@@ -52,5 +52,3 @@ class LSHTestBase(object):
     def load_planes(self, lsh):
         saved_planes = self.PLANES
         lsh.uniform_planes = np.array(saved_planes)
-
-

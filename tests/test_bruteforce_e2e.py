@@ -24,21 +24,21 @@ except ImportError:
     leveldb = None
 
 
-X = csr_matrix( [
-    [ 0, 0, 0, 0, 0, 0, 1],
-    [ 3, 0, 0, 0, 0, 0, -1],
-    [ 0, 1, 0, 0, 0, 0, 1],
-    [ 0, 0, 0, 9, 0, 0, 1],
-    [ 0, 0, 0, 0, 0, 0, 0],
-    [ 4, 0, 0, 0, 0, 0, 0],
-    [ 0, 0, 0, 0, 0, 0, 1],
-    [ 0, 0, 2, 0, 0, 0, 1],
-    [ 0, 0, 0, 0, 0, 0, 0],
-    [ 1, 1, 1, 1, 1, 1, 1]
+X = csr_matrix([
+    [0, 0, 0, 0, 0, 0,  1],
+    [3, 0, 0, 0, 0, 0, -1],
+    [0, 1, 0, 0, 0, 0,  1],
+    [0, 0, 0, 9, 0, 0,  1],
+    [0, 0, 0, 0, 0, 0,  0],
+    [4, 0, 0, 0, 0, 0,  0],
+    [0, 0, 0, 0, 0, 0,  1],
+    [0, 0, 2, 0, 0, 0,  1],
+    [0, 0, 0, 0, 0, 0,  0],
+    [1, 1, 1, 1, 1, 1,  1]
 ])
 
-X_sim = csr_matrix( [
-    [ 1, 1, 1, 1, 1, 1, 0]
+X_sim = csr_matrix([
+    [1, 1, 1, 1, 1, 1, 0]
 ])
 Y_sim = [
     10
@@ -59,7 +59,7 @@ y = [
 ]
 
 
-def lsh_instance( bits, dimensions, hashtables, storage_type):
+def lsh_instance(bits, dimensions, hashtables, storage_type):
     """ Build an lsh instance using specified settings & storage method.
 
     Params:
@@ -81,33 +81,33 @@ def lsh_instance( bits, dimensions, hashtables, storage_type):
     else:
         conf = {'dict': None}
 
-    lsh = LSH( bits,
-               dimensions,
-               num_hashtables=hashtables,
-               storage_config=conf)
+    lsh = LSH(bits,
+              dimensions,
+              num_hashtables=hashtables,
+              storage_config=conf)
     return lsh
 
 
-def build_index( lsh, X, y):
+def build_index(lsh, X, y):
     for ix in range(X.shape[0]):
         x = X.getrow(ix)
         c = None
         if y:
             c = y[ix]
-        lsh.index( x, extra_data=c)
+        lsh.index(x, extra_data=c)
 
 
-def query_index( lsh, x):
+def query_index(lsh, x):
     similar = lsh.query(x, num_results=1)
     #print "SIMILAR", similar
     return similar
 
 
-def run_lsh( bits, dimensions, hashtables, storage_type, distance_fn):
-    lsh = lsh_instance( bits, dimensions, hashtables, storage_type)
-    build_index( lsh, X, y)
+def run_lsh(bits, dimensions, hashtables, storage_type, distance_fn):
+    lsh = lsh_instance(bits, dimensions, hashtables, storage_type)
+    build_index(lsh, X, y)
     # [(<1x7 sparse matrix of type '<class 'numpy.int64'>'>, 'last', array([1.]))]
-    similar_points = query_index( lsh, X_sim.getrow(0))
+    similar_points = query_index(lsh, X_sim.getrow(0))
     print("similar_points", similar_points)
     # for s_point in similar_points:
     #     if not s_point:
@@ -129,7 +129,7 @@ def run_lsh( bits, dimensions, hashtables, storage_type, distance_fn):
     #     #     print "with data", extra_data
     #     # print "similarity", similarity
     #     errmsg = "Similar point returned is invalid (not a sparse csr mx)"
-    #     assert( type(point) == csr_matrix), errmsg
+    #     assert(type(point) == csr_matrix), errmsg
 
     for result_ix, s_point in enumerate(similar_points):
         print("result_ix:", result_ix, "s_point:", s_point)
@@ -144,7 +144,7 @@ def run_lsh( bits, dimensions, hashtables, storage_type, distance_fn):
         # print "similarity", similarity
         print("similarity:", similarity)
         errmsg = "Similar point returned is invalid (not a sparse csr mx)"
-        assert( type(point) == csr_matrix), errmsg
+        assert(type(point) == csr_matrix), errmsg
 
 
 
@@ -178,7 +178,7 @@ class TestCase(unittest.TestCase):
                     print("Testing with backend", s)
                     for d in distance_functions:
                         print("Testing distance function", d)
-                        run_lsh( bits, dimensions, h, s, d)
+                        run_lsh(bits, dimensions, h, s, d)
 
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
-import os
-import time
-import timeit
 import unittest
 
-import numpy as np
 from sparselsh import LSH
-from scipy.sparse import csr_matrix, issparse
+from scipy.sparse import csr_matrix
+import numpy as np
+
+import os
+import timeit
 
 from tests.base_test import LSHTestBase
 
@@ -25,12 +25,12 @@ class BenchmarkingTestCase(unittest.TestCase, LSHTestBase):
         that this is deterministic for reproducibility.
         """
         print("Building sparse random matrix...")
-        _s = time.time()
+        _s = timeit.default_timer()
         np.random.seed(7)
         X_rnd = np.random.rand(m, n)
         np.putmask(X_rnd, X_rnd < sparsity, 0)
         X_sparse = csr_matrix(X_rnd)
-        print(f"Done in {time.time()-_s}s")
+        print(f"Done in {timeit.default_timer()-_s}s")
         return X_sparse
 
     @unittest.skipIf(not os.environ.get("SPARSELSH_BENCH"),

@@ -4,8 +4,10 @@ all distance functions. This will write to disk, etc. Run from the
 SparseLSH root directory.
 """
 import unittest
-from scipy.sparse import csr_matrix
+
 from sparselsh import LSH
+from scipy.sparse import csr_matrix
+
 import sys
 
 try:

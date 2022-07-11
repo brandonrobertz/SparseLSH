@@ -59,6 +59,13 @@ class LSH(object):
     def __init__(self, hash_size, input_dim, num_hashtables=1,
                  storage_config=None, matrices_filename=None, overwrite=False):
 
+        assert isinstance(hash_size, int) and hash_size > 0, \
+            "hash_size must be a positive integer"
+        assert isinstance(input_dim, int) and input_dim > 0, \
+            "input_dim must be a positive integer"
+        assert isinstance(num_hashtables, int) and num_hashtables > 0, \
+            "num_hashtables must be a positive integer"
+
         self.hash_size = hash_size
         self.input_dim = input_dim
         self.num_hashtables = num_hashtables
@@ -218,12 +225,12 @@ class LSH(object):
             this is a target/class-value of some type.
         """
 
-        assert issparse(input_points), "input_points needs to be sparse"
-        if input_points.shape[0] != 1:
-            assert (extra_data is None) or \
-                (extra_data is not None and
-                 input_points.shape[0] == len(extra_data)), \
-                "input_points dimension needs to match extra data dimension"
+        assert issparse(input_points), "input_points needs to be a sparse matrix"
+        assert input_points.shape[1] == self.input_dim, "input_points wrong 2nd dimension"
+        assert input_points.shape[0] == 1 or (input_points.shape[0] > 1 and \
+               (extra_data is None or (isinstance(extra_data, list) and \
+               len(extra_data) == input_points.shape[0]))), \
+               "input_points dimension needs to match extra data dimension"
 
         for i, table in enumerate(self.hash_tables):
             keys = self._hash(self.uniform_planes[i], input_points)
@@ -244,8 +251,8 @@ class LSH(object):
                     value = (input_points[j],)
                     table.append_val(keys[j].tobytes(), value)
 
-    def query(self, query_points, num_results=None, distance_func=None,
-              dist_threshold=None):
+    def query(self, query_points, distance_func=None, dist_threshold=None,
+              num_results=None):
         """ Takes `query_points` which is a sparse CSR matrix of N x `input_dim`,
         returns `num_results` of results as a list of tuples that are ranked
         based on the supplied metric function `distance_func`. The exact return
@@ -312,6 +319,7 @@ class LSH(object):
             specified then any distance is accepted.
         """
         assert issparse(query_points), "query_points needs to be sparse"
+        assert query_points.shape[1] == self.input_dim, "query_points wrong 2nd dimension"
 
         if distance_func is None or distance_func == "euclidean":
             d_func = LSH.euclidean_dist_square

@@ -344,8 +344,8 @@ class LSH(object):
             raise ValueError(
                 "The distance threshold %s is invalid." % dist_threshold
             )
-        if num_results and (not isinstance(num_results, int) and \
-            not isinstance(num_results, float)) and num_results < 1:
+        if num_results and not isinstance(num_results, int) and \
+            num_results < 1:
             raise ValueError(
                 "The max amount of results %s is invalid." % num_results
             )

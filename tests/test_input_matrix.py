@@ -1,8 +1,8 @@
 import unittest
 
-from sparselsh import LSH
 from scipy.sparse import csr_matrix
 
+from sparselsh import LSH
 from tests.base_test import LSHTestBase
 
 

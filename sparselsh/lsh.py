@@ -2,13 +2,15 @@
 from __future__ import print_function
 
 import os
-import numpy as np
 from operator import itemgetter
+
+import numpy as np
 from scipy.sparse import csr_matrix, issparse, vstack
-from sklearn.metrics.pairwise import cosine_distances
 from scipy.spatial.distance import hamming
+from sklearn.metrics.pairwise import cosine_distances
 
 from .storage import storage, serialize, deserialize
+
 
 class LSH(object):
     """ LSH implments locality sensitive hashing using random projection for
@@ -335,12 +337,15 @@ class LSH(object):
             raise ValueError(
                 "The distance function %s is invalid." % distance_func
             )
-        if dist_threshold is not None and \
-            (dist_threshold <= 0 or (distance_func == "cosine" and dist_threshold > 1.0)):
+        if dist_threshold and (not isinstance(dist_threshold, int) and \
+            not isinstance(dist_threshold, float)) and \
+            (dist_threshold <= 0 or \
+                (distance_func == "cosine" and dist_threshold > 1.0)):
             raise ValueError(
                 "The distance threshold %s is invalid." % dist_threshold
             )
-        if num_results is not None and num_results < 1:
+        if num_results and (not isinstance(num_results, int) and \
+            not isinstance(num_results, float)) and num_results < 1:
             raise ValueError(
                 "The max amount of results %s is invalid." % num_results
             )

@@ -2,9 +2,9 @@
 from __future__ import print_function
 
 import argparse
-import re
 import math
 import operator
+import re
 
 import numpy as np
 from scipy.sparse import csr_matrix

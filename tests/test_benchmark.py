@@ -1,12 +1,11 @@
-import unittest
-
-from sparselsh import LSH
-from scipy.sparse import csr_matrix
-import numpy as np
-
 import os
 import timeit
+import unittest
 
+import numpy as np
+from scipy.sparse import csr_matrix
+
+from sparselsh import LSH
 from tests.base_test import LSHTestBase
 
 

@@ -1,7 +1,9 @@
 # thanks to S. Bhargav for submitting this test code
-from sparselsh import LSH
-from scipy.sparse import csr_matrix
 import unittest
+
+from scipy.sparse import csr_matrix
+
+from sparselsh import LSH
 
 
 class IndexThenQueryTestCase(unittest.TestCase):

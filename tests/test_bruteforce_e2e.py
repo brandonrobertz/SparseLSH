@@ -3,10 +3,13 @@ that makes sure that all storage backends work (don't crash) with
 all distance functions. This will write to disk, etc. Run from the
 SparseLSH root directory.
 """
-import unittest
-from scipy.sparse import csr_matrix
-from sparselsh import LSH
 import sys
+import unittest
+
+from scipy.sparse import csr_matrix
+
+from sparselsh import LSH
+
 
 try:
     import redis

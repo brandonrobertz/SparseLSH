@@ -57,7 +57,7 @@ def parse_args():
         "--output", type=str, choices=[
             "clusters", "wssse"
         ], default="clusters", help=(
-            "What to output. `cluster`, default, prints out the cluster "
+            "What to output. `clusters`, default, prints out the cluster "
             "names and their items. `wssse` outputs variance inside "
             "clusters and their items. Useful for finding optimal "
             "hashsize."

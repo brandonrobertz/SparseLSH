@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='sparselsh',
-    version='2.1.0',
+    version='2.1.1',
     author='Brandon Roberts',
     author_email='brandon@bxroberts.org',
     description='A locality sensitive hashing library with an emphasis on large, sparse datasets.',

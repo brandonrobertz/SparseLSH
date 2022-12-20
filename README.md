@@ -26,20 +26,9 @@ The easy way:
 
     pip install sparselsh
 
-Or you can clone this repo and follow these instructions:
+Or you can clone this repo and run the minimal install:
 
-`SparseLSH` depends on the following libraries:
-- [numpy](http://www.numpy.org/)
-- [scipy](http://www.scipy.org/)
-
-Optionally (for in-memory and disk-based persistence):
-- [redis](https://pypi.python.org/pypi/redis/)
-- [leveldb](https://code.google.com/p/py-leveldb/)
-- [bsddb](https://pypi.python.org/pypi/bsddb3/6.0.1) (built-in on Python 2.7.x)
-
-To install (minimal install):
-
-    python setup.py install
+    pip install .
 
 If you would like to use the LevelDB or Redis storage backends, you can
 install the dependencies from the `optional-requirements.txt`:

@@ -62,19 +62,15 @@ To create 4-bit hashes for input data of 7 dimensions:
         storage_config={"dict":None}
     )
 
-    # If you're using >= v2.1.0, this is much faster
-    # lsh.index(X, extra_data=y)
-
-    # For all versions
-    for ix in range(X.shape[0]):
-        x = X.getrow(ix)
-        c = y[ix]
-        lsh.index( x, extra_data=c)
+    lsh.index(X, extra_data=y)
 
     # Build a 1-D (single row) sparse matrix
     X_sim = csr_matrix([[1, 1, 1, 1, 1, 1, 0]])
     # find the point in X nearest to X_sim
     points = lsh.query(X_sim, num_results=1)
+    # split up the first result into its parts
+    (point, label), dist = points[0]
+    print(label)  # 'last'
 
 The query above result in a list of matrix-class tuple & similarity
 score tuples. A lower score is better in this case (the score here is 1.0).

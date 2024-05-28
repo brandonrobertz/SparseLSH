@@ -401,6 +401,8 @@ class LSH(object):
                 # Sort extra_data by ranked distances
                 try:
                     extra_data_sorted = itemgetter(*list(indices))(extra_datas)
+                    if isinstance(extra_data_sorted, (int, float)):
+                        extra_data_sorted = [extra_data_sorted]
                 # we have no results, so no extra_datas
                 except TypeError:
                     extra_data_sorted = []

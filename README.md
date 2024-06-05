@@ -22,7 +22,7 @@ pickle if it's not available.
 
 ## Installation
 
-The easy way:
+The easy way, from [PyPI][sparselsh-pypi]:
 
     pip install sparselsh
 
@@ -31,9 +31,10 @@ Or you can clone this repo and run the minimal install:
     pip install .
 
 If you would like to use the LevelDB or Redis storage backends, you can
-install the dependencies from the `optional-requirements.txt`:
+install those dependencies, too:
 
-    pip install -r optional-requirements.txt
+    pip install -r .[redis]
+    pip install -r .[leveldb]
 
 ## Quickstart
 
@@ -202,3 +203,5 @@ Returns a list of tuples, each of which has the original input point (which
 will be a tuple of csr-matrix, extra_data or just the csr-matrix if no extra
 data was supplied) and a similarity score.
 
+
+[sparselsh-pypi]: https://pypi.org/project/sparselsh/

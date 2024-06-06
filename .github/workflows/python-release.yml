@@ -33,29 +33,6 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-  publish-to-testpypi:
-    name: Publish to test PyPI
-    needs:
-      - build
-    runs-on: ubuntu-latest
-    environment: test
-    permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-    steps:
-      - name: Download all the dists
-        uses: actions/download-artifact@v3
-        with:
-          name: python-package-distributions
-          path: dist/
-      - name: Publish distribution to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-      - name: Test installing test distribution
-        run: |
-          pip install --extra-index-url https://testpypi.python.org/pypi sparselsh
-          sparselsh MANIFEST
-
   pypi-publish:
     name: Upload Release to PyPI
     needs:
